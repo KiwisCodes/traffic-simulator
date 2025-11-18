@@ -1,4 +1,6 @@
 gui/MainGUI.class
 gui/Controller.class
+gui/Controller$1.class
 ProjectMain/ProjectMain.class
+sumo/TestSumo.class
 sumo/MainSumo.class
