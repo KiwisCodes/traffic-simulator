@@ -161,6 +161,34 @@
                                 </TitledPane>
                             </panes>
                         </Accordion>
+                  <Region prefHeight="0.0" prefWidth="277.0" />
+                  <Label text="Sumo-GUI">
+                     <font>
+                        <Font name="System Bold" size="16.0" />
+                     </font>
+                  </Label>
+                  <TitledPane animated="false" text="Sumo-GUI">
+                     <content>
+                        <VBox prefHeight="72.0" prefWidth="275.0">
+                           <children>
+                              <Label text="Path to sumo-gui:" />
+                              <TextField fx:id="pathToSumoGui" promptText="ex: /Users/apple/sumo/bin/sumo-gui" />
+                              <BorderPane prefHeight="64.0" prefWidth="240.0">
+                                 <center>
+                                    <Button fx:id="startSumoGuiButton" mnemonicParsing="false" text="Start Sumo GUI" BorderPane.alignment="CENTER">
+                                       <padding>
+                                          <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                       </padding>
+                                       <BorderPane.margin>
+                                          <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                       </BorderPane.margin>
+                                    </Button>
+                                 </center>
+                              </BorderPane>
+                           </children>
+                        </VBox>
+                     </content>
+                  </TitledPane>
                         
                         <!-- 
                           Section 2: Data & Statistics
