@@ -20,7 +20,7 @@
    3. KHU VỰC BẢN ĐỒ (CENTER)
    ================================================================== */
 /* ID selector: Tự động áp dụng cho fx:id="mapPane" */
-#mapPane {
+#mapContainer {
     -fx-background-color: #2b2b2b; /* Màu xám đen (giả lập nhựa đường) */
     -fx-border-color: #000000;
     -fx-border-width: 1px;

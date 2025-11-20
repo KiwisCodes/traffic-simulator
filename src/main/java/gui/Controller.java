@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import logic.SimulationManager;
 
 import java.net.URL;
@@ -22,7 +23,7 @@ public class Controller implements Initializable {
     // ========================================================
     
     // Khu vực bản đồ
-    @FXML private Pane mapPane; 
+	@FXML private StackPane mapContainer; // fx:id="mapContainer"
 
     // Khu vực điều khiển chính
     @FXML private Button btnConnect; //@FXML: Là cách để code Java "nhìn thấy" các nút bạn vẽ bên Scene Builder. Nếu bên kia fx:id là btnStart thì bên này biến cũng phải tên là btnStart.
@@ -42,6 +43,9 @@ public class Controller implements Initializable {
     @FXML private Button btnPhaseRed;
     @FXML private Button btnPhaseYellow;
     @FXML private Button btnPhaseGreen;
+    
+    @FXML private javafx.scene.layout.AnchorPane mapViewPort; // Khung bao bên ngoài
+    
 
     // ========================================================
     // 2. CÁC BIẾN QUẢN LÝ LOGIC
@@ -74,45 +78,73 @@ public class Controller implements Initializable {
     // ========================================================
     // 4. XỬ LÝ KẾT NỐI (CONNECT)
     // ========================================================
-    
-    @FXML
+   
     // Hàm handle Connect Button (Khi khách bấm nút Kết nối)
-    public void handleConnectButton() { 
-    	System.out.println("DEBUG: TÔI ĐÃ BẤM NÚT KẾT NỐI!");
-        try {
-            statusLabel.setText("Status: Connecting to SUMO...");
-
-            // 1. Kết nối tới SUMO qua TraaS
-            simulationManager.connect();
-
-            // 2. Khởi tạo MapRenderer và vẽ bản đồ tĩnh (đường đi)
-            // Truyền Pane và Connection vào cho họa sĩ vẽ
-            // Đưa cho họa sĩ cái bảng (mapPane) và đường dây liên lạc (connection)
-            mapRenderer = new MapRenderer(mapPane, simulationManager.getConnection());
-            
-            // Vẽ bản đồ phải chạy trên luồng giao diện JavaFX
-            // Ở đây chúng ta sẽ dùng luồng chính để tính toán tỉ lệ và vẽ đường 
-            Platform.runLater(() -> { 
-           // Cái câu lệnh Platform.later này là để tránh hai luồng xung đột nhau. Tưởng tượng là chúng ta sẽ có luồng chính và luồng phụ, luồng chính là Luồng Giao Diện (JavaFX Application Thread), luồng phụ là Luồng Tính Toán (Background Thread). JavaFX bắt buộc bạn dùng Platform.runLater để đảm bảo mọi thay đổi trên màn hình đều được xếp hàng lần lượt, không ai tranh giành với ai. 
-           //Như vậy câu lệnh platform.runLater ở đây có nghĩa là mình yêu cầu máy phải thực hiện cái similationManager.connect cho xong hẳn mới vẽ, không tranh giành xung đột với 
-           //Trong nút handleConnectButton, thực ra bạn đang đứng ở Luồng Chính rồi (vì bạn bấm nút trên giao diện mà). Nên việc dùng Platform.runLater ở đây không bắt buộc gay gắt như ở nút Start (Luồng phụ).
-                mapRenderer.calculateScale(); // Tính toán tỉ lệ
-                mapRenderer.drawRoads();      // Vẽ đường xám
-            });
-
-            // 3. Tải danh sách ID đèn giao thông vào ListView
-            loadTrafficLightsList();
-
-            // 4. Cập nhật trạng thái nút
-            statusLabel.setText("Status: Connected to SUMO!");
-            btnConnect.setDisable(true);
-            btnStart.setDisable(false);
-
-        } catch (Exception e) {
-            statusLabel.setText("Status: Connection Error!");
-            e.printStackTrace();
-            showAlert("Error", "Could not connect to SUMO.\nCheck if sumo-gui is installed and path is correct.");
+    @FXML
+    public void handleConnectButton() {
+    	if (btnConnect.isDisabled()) { 
+            return; 
         }
+        btnConnect.setDisable(true); // Khóa nút ngay lập tức
+        // -----------------------------------------------------------
+
+        System.out.println("DEBUG: Bắt đầu quy trình kết nối..."); 
+        statusLabel.setText("Status: Launching SUMO...");
+        
+
+        // 2. Tạo luồng riêng để đi kết nối (Không làm đơ giao diện)
+        Thread connectionThread = new Thread(() -> {
+            try {
+                // --- ĐÂY LÀ VIỆC NẶNG NHẤT (Chạy ngầm) ---
+                // Thiết lập biến môi trường cho Mac (Fix lỗi thư viện)
+                System.setProperty("java.library.path", "/opt/homebrew/share/sumo/bin");
+                
+                // Gọi lệnh kết nối (Có thể mất 10-20s)
+                simulationManager.connect();
+                System.out.println("DEBUG: Đã kết nối thành công với SUMO!");
+
+                // 3. Sau khi kết nối xong, quay lại luồng chính để vẽ vời
+                Platform.runLater(() -> {
+                    try {
+                        statusLabel.setText("Status: Loading Map...");
+                        
+                        System.out.println("DEBUG: >> 1. Đang khởi tạo MapRenderer...");
+                        mapRenderer = new MapRenderer(mapViewPort, mapContainer, simulationManager.getConnection());
+                        
+                        System.out.println("DEBUG: >> 2. Đang tính tỉ lệ bản đồ...");
+                        mapRenderer.calculateScale();
+                        
+                        System.out.println("DEBUG: >> 3. Đang bắt đầu vẽ đường...");
+                        mapRenderer.drawRoads();
+                        
+                        System.out.println("DEBUG: >> 4. Đang tải danh sách đèn...");
+                        loadTrafficLightsList();
+
+                        System.out.println("DEBUG: >> 5. HOÀN TẤT!");
+                        statusLabel.setText("Status: Connected & Ready!");
+                        btnStart.setDisable(false);
+                        
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        statusLabel.setText("Status: Map Error!");
+                    }
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace(); // In lỗi ra console để xem
+                
+                // Báo lỗi lên giao diện nếu kết nối thất bại
+                Platform.runLater(() -> {
+                    statusLabel.setText("Status: Connection Failed!");
+                    btnConnect.setDisable(false); // Mở lại nút để thử lại
+                    showAlert("Connection Error", "Không thể kết nối SUMO.\nLỗi: " + e.getMessage());
+                });
+            }
+        });
+
+        // Kích hoạt luồng
+        connectionThread.setDaemon(true);
+        connectionThread.start();
     }
 
     // ========================================================

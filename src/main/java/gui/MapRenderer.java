@@ -2,207 +2,360 @@ package gui;
 
 import de.tudresden.sumo.cmd.Lane;
 import de.tudresden.sumo.cmd.Simulation;
+import de.tudresden.sumo.cmd.Vehicle;
 import de.tudresden.sumo.objects.SumoBoundingBox;
+import de.tudresden.sumo.objects.SumoColor;
 import de.tudresden.sumo.objects.SumoGeometry;
 import de.tudresden.sumo.objects.SumoPosition2D;
 import de.tudresden.sumo.objects.SumoStringList;
 import it.polito.appeal.traci.SumoTraciConnection;
+import javafx.application.Platform;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polyline;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList;
-import javafx.scene.shape.Rectangle; // Dùng hình chữ nhật làm xe
-import de.tudresden.sumo.cmd.Vehicle; // Lệnh điều khiển xe
-import de.tudresden.sumo.objects.SumoColor;
-import de.tudresden.sumo.objects.SumoPosition2D;
-import de.tudresden.sumo.objects.SumoStringList;
 
 public class MapRenderer {
 
-    private final Pane mapPane;
+  
     private final SumoTraciConnection connection;
 
-    // Các biến tỉ lệ để vẽ bản đồ
+    // CÁC LỚP (LAYERS)
+    private Pane roadLayer;         // Lớp 1: Đường
+    private Pane trafficLightLayer; // Lớp 2: Đèn
+    private Pane carLayer;          // Lớp 3: Xe con
+    private Pane truckLayer;        // Lớp 4: Xe tải
+
+    // Quản lý hình ảnh xe
+    private Map<String, Shape> vehicleMap = new HashMap<>();
+
+    // Biến tỉ lệ bản đồ
     private double scale = 1.0;
     private double minX = 0;
     private double minY = 0;
-    private double mapHeight = 0; // Chiều cao thực tế của vùng vẽ
+    private double mapHeight = 0;
+    private double xOffset = 0;
+    private double yOffset = 0;
+    
+    // Thêm biến lưu giới hạn bản đồ để dùng chung
+    private double x_max = 0;
+    private double y_max = 0;
+    
+    // BIẾN DÙNG CHO KÉO THẢ (PANNING)
+    private double mouseAnchorX;
+    private double mouseAnchorY;
+    private double translateAnchorX;
+    private double translateAnchorY;
 
-    public MapRenderer(Pane mapPane, SumoTraciConnection connection) {
-        this.mapPane = mapPane;
+    private final Pane mapViewPort;     // Khung nhìn (Cố định)
+    private final StackPane mapContainer; // Nội dung bản đồ (Phóng to/Thu nhỏ)
+    
+    
+    public MapRenderer(Pane mapViewPort, StackPane mapContainer, SumoTraciConnection connection) {
+    	this.mapViewPort = mapViewPort;     // Lưu khung nhìn
+        this.mapContainer = mapContainer;   // Lưu nội dung
         this.connection = connection;
+        //1. Ép khung nhìn cố định (Viewport) phải luôn màu đen (#2b2b2b)
+        this.mapViewPort.setStyle("-fx-background-color: #2b2b2b; -fx-border-width: 0;");
+     // 2. Nội dung bên trong: Trong suốt, VÀ QUAN TRỌNG LÀ KHÔNG CÓ VIỀN
+        // Thêm "-fx-border-width: 0;" để xóa cái khung chữ nhật đi
+        this.mapContainer.setStyle("-fx-background-color: transparent; -fx-border-width: 0; -fx-border-color: transparent;");
+       
+        
+        // -------------------------------------
+        
+        // Khởi tạo các lớp ngay khi tạo đối tượng
+        initLayers();
+     // GỌI HÀM TẠO MẶT NẠ CẮT
+        setupClipping();
+        enableZoomAndPan();
+    }
+    
+    /**
+     * Tạo mặt nạ (Clip) để bản đồ không bị tràn ra ngoài khung khi Zoom
+     */
+    private void setupClipping() {
+        Rectangle clipRect = new Rectangle();
+        
+        // Ràng buộc kích thước mặt nạ theo kích thước của khung nhìn
+        clipRect.widthProperty().bind(mapViewPort.widthProperty());
+        clipRect.heightProperty().bind(mapViewPort.heightProperty());
+        
+        // Áp dụng mặt nạ vào khung nhìn
+        mapViewPort.setClip(clipRect);
     }
 
     /**
-     * BƯỚC 1: Tính toán tỉ lệ (Scale)
-     * Lấy kích thước bản đồ từ SUMO và co giãn cho vừa với màn hình JavaFX
+     * Tạo các lớp trong suốt xếp chồng lên nhau
+     */
+    private void initLayers() {
+        roadLayer = new Pane();
+        trafficLightLayer = new Pane();
+        carLayer = new Pane();
+        truckLayer = new Pane();
+
+        // Cho phép chuột bấm xuyên qua các lớp trên xuống dưới
+        roadLayer.setPickOnBounds(false);
+        trafficLightLayer.setPickOnBounds(false);
+        carLayer.setPickOnBounds(false);
+        truckLayer.setPickOnBounds(false);
+
+        // Thêm vào StackPane (Cái nào add sau thì nằm đè lên trên)
+        mapContainer.getChildren().addAll(roadLayer, trafficLightLayer, truckLayer, carLayer);
+    }
+
+    /**
+     * Tính toán tỉ lệ Zoom (Bắt buộc chạy trước khi vẽ)
+     */
+    /**
+     * Tính toán tỉ lệ Zoom (Đã sửa lỗi ClassCastException)
      */
     public void calculateScale() {
         try {
-            // Gửi lệnh lấy khung bao quanh bản đồ (Boundary)
-            SumoBoundingBox boundary = (SumoBoundingBox) connection.do_job_get(Simulation.getNetBoundary());
-
-            this.minX = boundary.x_min;
-            this.minY = boundary.y_min;
-            double sumoWidth = boundary.x_max - boundary.x_min;
-            double sumoHeight = boundary.y_max - boundary.y_min;
-
-            // Lấy kích thước hiện tại của cái khung đen trên màn hình
-            double paneWidth = mapPane.getWidth();
-            double paneHeight = mapPane.getHeight();
-
-            // Tính tỉ lệ zoom (giữ nguyên tỉ lệ khung hình để map không bị méo)
-            double scaleX = paneWidth / sumoWidth;
-            double scaleY = paneHeight / sumoHeight;
+            // 1. Lấy biên giới hạn từ SUMO
+            SumoGeometry boundaryGeo = (SumoGeometry) connection.do_job_get(Simulation.getNetBoundary());
             
-            // Nhân 0.95 để chừa lề một chút cho đẹp
-            this.scale = Math.min(scaleX, scaleY) * 0.95;
+            double x_min = Double.MAX_VALUE;
+            double y_min = Double.MAX_VALUE;
+            // Reset lại max
+            this.x_max = -Double.MAX_VALUE;
+            this.y_max = -Double.MAX_VALUE;
 
-            // Lưu chiều cao pane để dùng cho công thức đảo trục Y
-            this.mapHeight = paneHeight;
+            for (SumoPosition2D point : boundaryGeo.coords) {
+                if (point.x < x_min) x_min = point.x;
+                if (point.y < y_min) y_min = point.y;
+                if (point.x > this.x_max) this.x_max = point.x;
+                if (point.y > this.y_max) this.y_max = point.y;
+            }
+
+            this.minX = x_min;
+            this.minY = y_min;
+            
+            // Kích thước thực tế của bản đồ SUMO
+            double sumoMapWidth = this.x_max - this.minX;
+            double sumoMapHeight = this.y_max - this.minY;
+
+            // Kích thước màn hình JavaFX
+            double paneWidth = mapViewPort.getWidth();
+            double paneHeight = mapViewPort.getHeight();
+            
+            if (paneWidth == 0) paneWidth = 1000;
+            if (paneHeight == 0) paneHeight = 800;
+
+            // 2. Tính Tỉ lệ (Scale)
+            double scaleX = paneWidth / sumoMapWidth;
+            double scaleY = paneHeight / sumoMapHeight;
+            this.scale = Math.min(scaleX, scaleY) * 0.95; // Zoom 95% để chừa lề
+
+            // 3. Tính Offset (Đẩy bản đồ ra giữa) - ĐÂY LÀ PHẦN QUAN TRỌNG MỚI THÊM
+            double occupiedWidth = sumoMapWidth * this.scale;
+            double occupiedHeight = sumoMapHeight * this.scale;
+
+            this.xOffset = (paneWidth - occupiedWidth) / 2;
+            this.yOffset = (paneHeight - occupiedHeight) / 2;
+
+            System.out.println("Scale: " + scale + " | Offset X: " + xOffset + " | Offset Y: " + yOffset);
 
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Không thể lấy kích thước bản đồ từ SUMO.");
         }
     }
 
     /**
-     * BƯỚC 2: Vẽ các con đường (Static Map)
-     * Hàm này chạy khá nặng, nên chạy 1 lần lúc khởi động.
+     * Chuyển đổi tọa độ X (Mét -> Pixel)
      */
-    public void drawRoads() {
-        try {
-            System.out.println("Đang tải dữ liệu bản đồ...");
-            
-            // 1. Lấy danh sách tất cả ID của các làn đường (Lanes)
-            SumoStringList laneIdList = (SumoStringList) connection.do_job_get(Lane.getIDList());
-
-            // 2. Duyệt qua từng làn đường để vẽ
-            for (String laneId : laneIdList) {
-                
-                // Gửi lệnh lấy hình dáng (Shape) của làn đường
-                SumoGeometry geometry = (SumoGeometry) connection.do_job_get(Lane.getShape(laneId));
-                
-                // Tạo đối tượng đường gấp khúc (Polyline) của JavaFX
-                Polyline laneLine = new Polyline();
-                
-                // Màu sắc: Xám nhạt hoặc Trắng mờ để nổi trên nền đen
-                laneLine.setStroke(Color.web("#666666")); 
-                laneLine.setStrokeWidth(1.0); // Độ dày nét vẽ
-
-                // Chuyển đổi từng điểm tọa độ từ SUMO -> JavaFX
-                for (SumoPosition2D point : geometry.coords) {
-                    double fxX = convertX(point.x);
-                    double fxY = convertY(point.y);
-                    laneLine.getPoints().addAll(fxX, fxY);
-                }
-
-                // Thêm đường vẽ vào màn hình
-                mapPane.getChildren().add(laneLine);
-            }
-            
-            System.out.println("Đã vẽ xong " + laneIdList.size() + " làn đường.");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // ========================================================
-    // CÔNG THỨC TOÁN HỌC CHUYỂN ĐỔI TỌA ĐỘ (MÉT -> PIXEL)
-    // ========================================================
-
     private double convertX(double sumoX) {
-        // Công thức: (Giá trị thực - Giá trị nhỏ nhất) * Tỉ lệ
-        return (sumoX - minX) * scale;
+        // Công thức: Lề Trái + (Tọa độ thực - Tọa độ gốc) * Tỉ lệ
+        return xOffset + ((sumoX - minX) * scale);
     }
 
     private double convertY(double sumoY) {
-        // Công thức đảo trục Y: Chiều cao màn hình - (Giá trị Y đã scale)
-        // Vì JavaFX tọa độ (0,0) nằm góc TRÊN cùng bên trái
-        return mapHeight - ((sumoY - minY) * scale);
+        // Công thức đảo trục Y + Lề Trên
+        // (y_max - sumoY) là phép lật ngược trục Y chuẩn nhất
+        return yOffset + ((y_max - sumoY) * scale);
     }
-    
-    private Map<String, Rectangle> vehicleMap = new HashMap<>();
+
     /**
-     * BƯỚC 3: Cập nhật vị trí xe (Chạy liên tục mỗi 0.1 giây)
+     * Vẽ đường xá (Chạy trên luồng riêng, vẽ vào roadLayer)
+     */
+    public void drawRoads() {
+        Thread drawThread = new Thread(() -> {
+            try {
+                SumoStringList laneIdList = (SumoStringList) connection.do_job_get(Lane.getIDList());
+                java.util.List<javafx.scene.Node> batch = new java.util.ArrayList<>();
+                
+                for (String laneId : laneIdList) {
+                    // Bỏ qua các đoạn nối nội bộ (internal lanes) bắt đầu bằng dấu ":"
+                    if (laneId.startsWith(":")) continue;
+
+                    try {
+                        SumoGeometry geometry = (SumoGeometry) connection.do_job_get(Lane.getShape(laneId));
+                        Polyline laneLine = new Polyline();
+                        laneLine.setStroke(Color.web("#ffffff"));
+                        laneLine.setStrokeWidth(1.0);
+                     // (Mẹo nâng cao) Tắt hiệu ứng làm mịn cạnh (Anti-aliasing) nếu muốn nét đanh và sắc cạnh hơn nữa (tùy chọn)
+                        laneLine.setSmooth(false); 
+
+                        for (SumoPosition2D point : geometry.coords) {
+                            laneLine.getPoints().addAll(convertX(point.x), convertY(point.y));
+                        }
+
+                        
+                        batch.add(laneLine);
+
+                        // Gom 50 đường vẽ 1 lần cho mượt
+                        if (batch.size() >= 50) {
+                            final java.util.List<javafx.scene.Node> nodesToDraw = new java.util.ArrayList<>(batch);
+                            Platform.runLater(() -> roadLayer.getChildren().addAll(nodesToDraw));
+                            batch.clear();
+                            Thread.sleep(5); 
+                        }
+                    } catch (Exception e) { continue; }
+                }
+                // Vẽ nốt phần dư
+                if (!batch.isEmpty()) {
+                    final java.util.List<javafx.scene.Node> remainingNodes = new java.util.ArrayList<>(batch);
+                    Platform.runLater(() -> roadLayer.getChildren().addAll(remainingNodes));
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+        });
+        drawThread.setDaemon(true);
+        drawThread.start();
+    }
+
+    /**
+     * Cập nhật vị trí xe (Chạy liên tục)
      */
     public void updateVehicles() {
         try {
-            // 1. Lấy danh sách ID các xe đang chạy từ SUMO
             SumoStringList activeVehicles = (SumoStringList) connection.do_job_get(Vehicle.getIDList());
 
-            // 2. Duyệt qua từng xe đang chạy
             for (String vehicleId : activeVehicles) {
-
-                // Lấy tọa độ (x, y) hiện tại của xe
                 SumoPosition2D pos = (SumoPosition2D) connection.do_job_get(Vehicle.getPosition(vehicleId));
-
-                // Lấy góc quay (angle) để đầu xe hướng đúng đường
                 double angle = (double) connection.do_job_get(Vehicle.getAngle(vehicleId));
-
-                // Lấy màu sắc xe
                 SumoColor color = (SumoColor) connection.do_job_get(Vehicle.getColor(vehicleId));
+                
+                // Lấy loại xe để phân lớp (nếu có)
+                // Nếu lỗi hàm getTypeID, tạm thời bỏ qua logic phân lớp
+                String typeId = "car"; 
+                try { typeId = (String) connection.do_job_get(Vehicle.getTypeID(vehicleId)); } catch (Exception e) {}
 
-                // --- LOGIC VẼ HOẶC CẬP NHẬT ---
                 if (vehicleMap.containsKey(vehicleId)) {
-                    // TRƯỜNG HỢP A: Xe đã có trên màn hình -> Chỉ cần di chuyển nó
-                    Rectangle carShape = vehicleMap.get(vehicleId);
-
-                    // Cập nhật vị trí mới (nhớ chuyển đổi sang Pixel)
-                    carShape.setX(convertX(pos.x) - carShape.getWidth() / 2); // Trừ đi 1/2 chiều rộng để tâm xe nằm giữa đường
+                    // --- CẬP NHẬT XE CŨ ---
+                    Rectangle carShape = (Rectangle) vehicleMap.get(vehicleId);
+                    
+                    // Tâm xe = Tọa độ - (Chiều rộng / 2)
+                    carShape.setX(convertX(pos.x) - carShape.getWidth() / 2);
                     carShape.setY(convertY(pos.y) - carShape.getHeight() / 2);
-                    carShape.setRotate(angle); // Xoay xe
+                    carShape.setRotate(angle); // Xoay xe theo hướng đường
 
                 } else {
-                    // TRƯỜNG HỢP B: Xe mới xuất hiện -> Tạo hình mới
-                    // Xe con thường dài 5m, rộng 2m. Ta nhân với tỉ lệ scale để ra pixel
-                    double carWidth = 2.0 * scale; 
-                    double carLength = 5.0 * scale; 
+                    // --- TẠO XE MỚI ---
+                    double width = 2.0 * scale;
+                    double length = 5.0 * scale;
+                    
+                    // Giới hạn kích thước tối thiểu để nhìn thấy được
+                    if (width < 3) width = 3;
+                    if (length < 6) length = 6;
 
-                    // Đảm bảo xe không quá bé nếu zoom xa
-                    if (carWidth < 2) carWidth = 2;
-                    if (carLength < 4) carLength = 4;
-
-                    Rectangle carShape = new Rectangle(carWidth, carLength);
-
-                    // Đặt vị trí ban đầu
-                    carShape.setX(convertX(pos.x) - carWidth / 2);
-                    carShape.setY(convertY(pos.y) - carLength / 2);
-                    carShape.setRotate(angle);
-
-                    // Tô màu cho xe (Convert SumoColor -> JavaFX Color)
+                    Rectangle carShape = new Rectangle(width, length);
                     carShape.setFill(Color.rgb(color.r, color.g, color.b));
                     carShape.setStroke(Color.BLACK);
                     carShape.setStrokeWidth(1);
 
-                    // Thêm vào màn hình và sổ điểm danh
-                    mapPane.getChildren().add(carShape);
+                    carShape.setX(convertX(pos.x) - width / 2);
+                    carShape.setY(convertY(pos.y) - length / 2);
+                    carShape.setRotate(angle);
+
+                    // Phân loại vào các lớp
+                    if (typeId.toLowerCase().contains("truck") || typeId.toLowerCase().contains("bus")) {
+                        truckLayer.getChildren().add(carShape);
+                    } else {
+                        carLayer.getChildren().add(carShape);
+                    }
+
                     vehicleMap.put(vehicleId, carShape);
                 }
             }
 
-            // 3. Dọn dẹp những xe đã biến mất (Đã đến đích hoặc rẽ sang map khác)
-            // Tìm những ID có trong sổ điểm danh (vehicleMap) NHƯNG không còn trong danh sách activeVehicles
-            ArrayList<String> vehiclesToRemove = new ArrayList<>();
+            // --- XÓA XE ĐÃ BIẾN MẤT ---
+            ArrayList<String> toRemove = new ArrayList<>();
             for (String id : vehicleMap.keySet()) {
                 if (!activeVehicles.contains(id)) {
-                    vehiclesToRemove.add(id);
+                    toRemove.add(id);
                 }
             }
-
-            // Xóa hình ảnh các xe đó khỏi màn hình
-            for (String id : vehiclesToRemove) {
-                Rectangle carShape = vehicleMap.get(id);
-                mapPane.getChildren().remove(carShape); // Xóa khỏi giao diện
-                vehicleMap.remove(id);                  // Xóa khỏi sổ quản lý
+            for (String id : toRemove) {
+                Shape shape = vehicleMap.get(id);
+                carLayer.getChildren().remove(shape);
+                truckLayer.getChildren().remove(shape);
+                vehicleMap.remove(id);
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    
+    // Các hàm bật tắt lớp (Visibility)
+    public void setTrafficLightsVisible(boolean visible) { trafficLightLayer.setVisible(visible); }
+    public void setCarsVisible(boolean visible) { carLayer.setVisible(visible); }
+    public void setTrucksVisible(boolean visible) { truckLayer.setVisible(visible); }
+    
+    
+    /**
+     * Bật tính năng Zoom và Kéo thả bản đồ
+     */
+    private void enableZoomAndPan() {
+        // 1. XỬ LÝ ZOOM (LĂN CHUỘT)
+        mapContainer.setOnScroll(event -> {
+            event.consume();
+
+            double zoomFactor = 1.1; // Tốc độ zoom
+            double deltaY = event.getDeltaY();
+
+            if (deltaY < 0) {
+                zoomFactor = 1 / zoomFactor; // Thu nhỏ
+            }
+
+            // Giới hạn zoom (Không cho quá nhỏ hoặc quá to)
+            double currentScale = mapContainer.getScaleX();
+            double newScale = currentScale * zoomFactor;
+            
+            if (newScale < 0.5) newScale = 0.5;
+            if (newScale > 10.0) newScale = 10.0;
+
+            // Áp dụng tỉ lệ mới
+            mapContainer.setScaleX(newScale);
+            mapContainer.setScaleY(newScale);
+        });
+
+        // 2. XỬ LÝ KÉO THẢ (PANNING)
+        
+        // Khi bấm chuột xuống: Ghi nhớ vị trí bắt đầu
+        mapContainer.setOnMousePressed(event -> {
+            mouseAnchorX = event.getSceneX();
+            mouseAnchorY = event.getSceneY();
+            translateAnchorX = mapContainer.getTranslateX();
+            translateAnchorY = mapContainer.getTranslateY();
+        });
+
+        // Khi di chuột (đang giữ nút): Di chuyển bản đồ
+        mapContainer.setOnMouseDragged(event -> {
+            double dragX = event.getSceneX() - mouseAnchorX;
+            double dragY = event.getSceneY() - mouseAnchorY;
+            
+            // Điều chỉnh vị trí mới = Vị trí cũ + Quãng đường kéo
+            // Chia cho scale hiện tại để tốc độ kéo không bị quá nhanh khi zoom to
+            double scale = mapContainer.getScaleX();
+            mapContainer.setTranslateX(translateAnchorX + dragX);
+            mapContainer.setTranslateY(translateAnchorY + dragY);
+        });
     }
 }

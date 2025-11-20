@@ -18,7 +18,7 @@ public class SimulationManager {
     // Tên file chạy của SUMO.
     // Nếu bạn đã cài SUMO vào biến môi trường (PATH), chỉ cần để "sumo-gui".
     // Nếu báo lỗi không tìm thấy, hãy thay bằng đường dẫn tuyệt đối (VD: "/usr/local/bin/sumo-gui")
-    private static final String SUMO_BIN = "/Users/duongquytrang/sumo/bin/sumo-gui"; 
+    private static final String SUMO_BIN = "/Users/duongquytrang/sumo/bin/sumo"; 
     
     // Đường dẫn đến file cấu hình .sumocfg trong thư mục resources
     // Lưu ý: Dấu "/" đầu tiên nghĩa là bắt đầu từ thư mục gốc của project/resources
@@ -40,17 +40,38 @@ public class SimulationManager {
      * Mở kết nối tới SUMO
      */
     public void connect() throws IOException, InterruptedException {
-        // 1. Tạo đối tượng kết nối với file config
-        connection = new SumoTraciConnection(SUMO_BIN, CONFIG_FILE);
+        System.out.println("DEBUG: [1] Đang chuẩn bị kết nối...");
         
-        // 2. Tùy chọn: In log ra console để dễ debug
-        // connection.addOption("log", "sumo-log.txt"); 
+        // --- PHẦN BẠN ĐANG THIẾU ---
+        // Chuyển đổi đường dẫn tương đối sang tuyệt đối để tránh lỗi file not found
+        java.io.File configFile = new java.io.File(CONFIG_FILE);
+        String absoluteConfigPath = configFile.getAbsolutePath();
+        // ---------------------------
         
-        // 3. Bắt đầu chạy server SUMO (Mở cửa sổ SUMO lên)
+        System.out.println("DEBUG: [2] Đường dẫn file config: " + absoluteConfigPath);
+
+        if (!configFile.exists()) {
+            throw new IOException("LỖI: Không tìm thấy file config tại: " + absoluteConfigPath);
+        }
+
+        System.out.println("DEBUG: [3] Đang khởi tạo đối tượng SumoTraciConnection...");
+        
+        // Bây giờ biến absoluteConfigPath đã có giá trị để dùng ở đây
+        connection = new SumoTraciConnection(SUMO_BIN, absoluteConfigPath);
+        
+        // connection.addOption("verbose", "true"); // Tùy chọn debug
+
+        System.out.println("DEBUG: [4] Đang gọi runServer()...");
         connection.runServer();
-        
-        // Chạy thử 1 bước để load dữ liệu ban đầu (tùy chọn, giúp map đỡ bị lỗi null)
-        // connection.do_timestep(); 
+
+        // --- DÒNG QUAN TRỌNG ĐỂ TRÁNH TREO (LAG) ---
+        System.out.println("DEBUG: [5] Server đã chạy. Đang chạy bước khởi động...");
+        try {
+            connection.do_timestep();
+            System.out.println("DEBUG: [6] Bước khởi động thành công!");
+        } catch (Exception e) {
+            System.err.println("Lỗi khởi động step đầu tiên: " + e.getMessage());
+        }
     }
 
     /**
