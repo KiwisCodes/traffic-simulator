@@ -31,14 +31,14 @@
   top, bottom, left, right, and center.
 -->
 
-<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="900.0" prefWidth="1400.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.Controller">
+<BorderPane fx:id="borderPaneContainer" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="900.0" prefWidth="1400.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.Controller">
     
     <!-- 
       TOP Region:
       A horizontal box (HBox) for the application title bar.
     -->
     <top>
-        <HBox alignment="CENTER" prefHeight="40.0" prefWidth="200.0" style="-fx-background-color: #333333;" BorderPane.alignment="CENTER">
+        <HBox fx:id="simulationHeader" alignment="CENTER" prefHeight="40.0" prefWidth="200.0" style="-fx-background-color: #333333;" BorderPane.alignment="CENTER">
             <children>
                 <Label text="Traffic Simulator" textFill="WHITE">
                     <font>
@@ -278,9 +278,9 @@
       A TitledPane (collapsible) for the Simulation Log.
     -->
     <bottom>
-        <TitledPane collapsible="true" expanded="true" text="Simulation Log" BorderPane.alignment="CENTER">
+        <TitledPane fx:id="bottomLogArea" collapsible="true" expanded="true" text="Simulation Log" BorderPane.alignment="CENTER">
             <content>
-                <ScrollPane prefHeight="100.0" prefWidth="200.0">
+                <ScrollPane fx:id="bottomLog" prefHeight="100.0" prefWidth="200.0">
                     <content>
                         <Label fx:id="logLabel" alignment="TOP_LEFT" prefHeight="100.0" prefWidth="1380.0" style="-fx-background-color: #ffffff;" wrapText="true" />
                     </content>
@@ -294,7 +294,7 @@
       A StackPane is used here to layer the Map Controls on top of the Map.
     -->
     <center>
-        <StackPane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+        <StackPane fx:id="rightMapArea" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
             <children>
                 
                 <!-- 
@@ -302,26 +302,27 @@
                   A ScrollPane holds the Pane (mapPane) to allow panning.
                 -->
                 <ScrollPane fx:id="mapScrollPane" prefHeight="200.0" prefWidth="200.0">
-                    <content>
-                        <Pane fx:id="mapPane" prefHeight="2000.0" prefWidth="2000.0" style="-fx-background-color: #ffffff;">
+               <content>
+                  <StackPane fx:id="rootStackPane" prefHeight="746.0" prefWidth="1108.0" style="-fx-background-color: #ffffff;">
                      <children>
-                        <StackPane alignment="TOP_RIGHT" layoutX="1047.0" layoutY="1.0" opacity="0.7" prefHeight="31.0" prefWidth="30.0">
-                           <children>
-                              <Button alignment="TOP_RIGHT" mnemonicParsing="false" text="?" textAlignment="CENTER" />
-                           </children>
-                           <padding>
-                              <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-                           </padding>
-                        </StackPane>
-                     </children></Pane>
-                    </content>
+                        <Pane fx:id="baseMapPane" />
+                        <Pane fx:id="junctionPane" pickOnBounds="false" />
+                        <Pane fx:id="routePane1" pickOnBounds="false" />
+                        <Pane fx:id="trafficLightPane" pickOnBounds="false" />
+                        <Pane fx:id="truckPane" pickOnBounds="false" />
+                        <Pane fx:id="busPane" pickOnBounds="false" />
+                        <Pane fx:id="carPane" pickOnBounds="false" />
+                        <Pane fx:id="bikePane" pickOnBounds="false" />
+                     </children>
+                  </StackPane>
+               </content>
                 </ScrollPane>
                 
                             <!-- 
                   Layer 2: The Map Controls (Zoom buttons)
                               This StackPane is aligned to the bottom-right of the center region.
                             -->
-                <StackPane fx:id="mapControlsContainer" alignment="BOTTOM_RIGHT" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="99.0" prefWidth="118.0" StackPane.alignment="BOTTOM_RIGHT">
+                <StackPane fx:id="mapControlsContainer" alignment="BOTTOM_RIGHT">
                     <children>
                         <!-- 
                           This VBox holds the zoom buttons.
@@ -381,6 +382,18 @@
                     </StackPane.margin>
                     
                             </StackPane>
+            <StackPane prefHeight="150.0" prefWidth="200.0">
+               <children>
+                  <Button fx:id="helpButton" alignment="CENTER" mnemonicParsing="false" text="?" textAlignment="CENTER" StackPane.alignment="TOP_RIGHT">
+                     <opaqueInsets>
+                        <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
+                     </opaqueInsets>
+                     <StackPane.margin>
+                        <Insets bottom="15.0" left="15.0" right="20.0" top="6.0" />
+                     </StackPane.margin>
+                  </Button>
+               </children>
+            </StackPane>
             </children>
         </StackPane>
     </center>

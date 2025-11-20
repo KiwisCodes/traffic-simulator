@@ -17,7 +17,7 @@ public class TestSumo {
         String configFile;
         
         try {
-            java.net.URL resource = MainSumo.class.getClassLoader().getResource(configFileName);
+            java.net.URL resource = SimulationManager.class.getClassLoader().getResource(configFileName);
             
             if (resource == null) {
                 System.err.println("❌ CRITICAL ERROR: Could not find '" + configFileName + "' in resources!");
