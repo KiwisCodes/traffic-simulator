@@ -24,8 +24,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1200.0" stylesheets="@style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1200.0" stylesheets="@style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.Controller">
    <children>
       <BorderPane prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <top>
@@ -47,7 +46,7 @@
             </MenuBar>
          </top>
          <center>
-            <Pane id="mapPane" prefHeight="773.0" prefWidth="1008.0" BorderPane.alignment="CENTER" />
+            <Pane id="mapPane" fx:id="mapPane" prefHeight="773.0" prefWidth="1008.0" BorderPane.alignment="CENTER" />
          </center>
          <right>
             <VBox prefHeight="200.0" prefWidth="300.0" spacing="10.0" styleClass="control-panel" BorderPane.alignment="CENTER">
@@ -60,11 +59,11 @@
                         <Font name="System Bold" size="23.0" />
                      </font>
                   </Label>
-                  <Separator prefWidth="200.0" />
-                  <Button id="btnConnect" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Connect SUMO" />
-                  <Button id="btnStart" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Start Simulation" />
-                  <Button id="btnStop" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="Stop" />
-                  <Separator prefWidth="200.0" />
+                  <Separator prefWidth="200.0" styleClass="line" />
+                  <Button id="btnConnect" fx:id="btnConnect" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleConnectButton" onMouseClicked="#handleConnectButton" text="Connect SUMO" />
+                  <Button id="btnStart" fx:id="btnStart" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleStartButton" text="Start Simulation" />
+                  <Button id="btnStop" fx:id="btnStop" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#handleStopButton" text="Stop" />
+                  <Separator prefWidth="200.0" styleClass="line" />
                   <TabPane prefHeight="326.0" prefWidth="280.0" tabClosingPolicy="UNAVAILABLE">
                     <tabs>
                       <Tab text="Vehicles">
@@ -74,7 +73,7 @@
                                     <VBox prefHeight="200.0" prefWidth="232.0">
                                        <children>
                                           <Label text="Inject Car on Edge" />
-                                          <TextField promptText="Edge Id" />
+                                          <TextField id="txtEdgeId" fx:id="txtEdgeId" promptText="Edge Id" styleClass="text-field" />
                                           <Label text="Number of Cars">
                                              <VBox.margin>
                                                 <Insets top="10.0" />
@@ -85,7 +84,7 @@
                                                 <Insets />
                                              </VBox.margin>
                                           </Spinner>
-                                          <Button id="btnAddVehicle" mnemonicParsing="false" text="Add Vehicle">
+                                          <Button fx:id="btnAddVehicle" mnemonicParsing="false" onAction="#handleAddVehicle" text="Add Vehicle">
                                              <VBox.margin>
                                                 <Insets top="10.0" />
                                              </VBox.margin>
@@ -113,7 +112,7 @@
                                                 <Insets top="20.0" />
                                              </padding>
                                           </Label>
-                                          <ListView id="listTrafficLights" prefHeight="126.0" prefWidth="262.0">
+                                          <ListView fx:id="listTrafficLights" prefHeight="126.0" prefWidth="262.0">
                                              <opaqueInsets>
                                                 <Insets />
                                              </opaqueInsets>
@@ -123,9 +122,15 @@
                                           </ListView>
                                        </children>
                                     </VBox>
-                                    <Button id="btnSwitchPhase" layoutX="8.0" layoutY="167.0" mnemonicParsing="false" text="Switch Phase" />
                                     <Label layoutX="12.0" layoutY="200.0" text="Phase Duration" />
                                     <Spinner layoutX="12.0" layoutY="219.0" />
+                                    <HBox alignment="CENTER" layoutX="10.0" layoutY="161.0" prefHeight="33.0" prefWidth="250.0" spacing="15.0">
+                                       <children>
+                                          <Button fx:id="btnPhaseRed" mnemonicParsing="false" onAction="#handleRedPhase" styleClass="btn-red" text="Red" />
+                                          <Button fx:id="btnPhaseYellow" mnemonicParsing="false" onAction="#handleYellowPhase" styleClass="btn-yellow" text="Yellow" />
+                                          <Button fx:id="btnPhaseGreen" mnemonicParsing="false" onAction="#handleGreenPhase" styleClass="btn-green" text="Green" />
+                                       </children>
+                                    </HBox>
                                  </children>
                               </AnchorPane>
                         </content>
@@ -155,7 +160,7 @@
          <bottom>
             <HBox prefHeight="49.0" prefWidth="1200.0" styleClass="status-bar" BorderPane.alignment="CENTER">
                <children>
-                  <Label id="lblStatus" text="Status: Ready">
+                  <Label id="lblStatus" fx:id="statusLabel" text="Status: Ready">
                      <font>
                         <Font size="22.0" />
                      </font>
@@ -167,7 +172,7 @@
                      </HBox.margin>
                   </Label>
                   <Region prefHeight="200.0" prefWidth="200.0" HBox.hgrow="ALWAYS" />
-                  <Label id="lblTime" text="Simulation Time: 0">
+                  <Label id="lblTime" fx:id="lblTime" text="Simulation Time: 0">
                      <font>
                         <Font size="22.0" />
                      </font>

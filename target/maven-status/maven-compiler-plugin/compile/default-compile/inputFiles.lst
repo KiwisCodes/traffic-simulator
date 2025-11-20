@@ -1,4 +1,9 @@
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/ProjectMain/ProjectMain.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/ProjectMain/Milestone1Demo.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/logic/SimulationManager.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/VehicleWrapper.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/gui/MainGUI.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/TrafficLightWrapper.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/gui/MapRenderer.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/gui/Controller.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/sumo/MainSumo.java

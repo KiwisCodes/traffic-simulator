@@ -133,3 +133,52 @@
     -fx-font-weight: bold;
     -fx-text-fill: #444;
 }
+
+/* ==================================================================
+   ĐIỀU KHIỂN ĐÈN GIAO THÔNG (TRAFFIC LIGHT CONTROLS)
+   ================================================================== */
+
+/* Định dạng chung cho cả 3 nút đèn để chúng có kích thước đều nhau */
+.btn-red, .btn-yellow, .btn-green {
+    -fx-font-weight: bold;
+    -fx-pref-width: 70px; /* Chiều rộng cố định cho đều */
+    -fx-background-radius: 15px; /* Bo tròn mạnh để giống hình đèn */
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 3, 0, 0, 2);
+}
+
+/* 1. Nút ĐÈN ĐỎ */
+.btn-red {
+    -fx-background-color: #ff5252;
+    -fx-text-fill: white;
+}
+.btn-red:hover {
+    -fx-background-color: #ff0000; /* Đỏ tươi khi di chuột vào */
+}
+.btn-red:pressed {
+    -fx-background-color: #c60000;
+}
+
+/* 2. Nút ĐÈN VÀNG */
+.btn-yellow {
+    -fx-background-color: #ffca28;
+    -fx-text-fill: #333333; /* Chữ màu đen cho dễ đọc trên nền vàng */
+}
+.btn-yellow:hover {
+    -fx-background-color: #ffc107; /* Vàng đậm hơn */
+}
+.btn-yellow:pressed {
+    -fx-background-color: #ffb300;
+}
+
+/* 3. Nút ĐÈN XANH */
+.btn-green {
+    -fx-background-color: #66bb6a;
+    -fx-text-fill: white;
+}
+.btn-green:hover {
+    -fx-background-color: #4caf50; /* Xanh lá đậm chuẩn */
+}
+.btn-green:pressed {
+    -fx-background-color: #2e7d32;
+}
