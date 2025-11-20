@@ -1,4 +1,4 @@
-package ProjectMain;
+package controller;
 
 import javafx.animation.AnimationTimer;
 import javafx.fxml.FXML;
@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class Controller {
+public class MainController {
 
     // --- FXML View Elements ---
     

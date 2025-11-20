@@ -1,10 +1,11 @@
-package sumo;
+package testjava;
 
 import java.io.IOException;
 import java.util.List;
 
 import de.tudresden.sumo.cmd.*;
 import it.polito.appeal.traci.*;
+import model.SimulationManager;
 
 public class TestSumo {
 
