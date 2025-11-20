@@ -1,31 +1,16 @@
-package gui;
+package gui; // <- 1. SỬA LỖI PACKAGE: Đảm bảo dòng này là dòng đầu tiên
 
-// ❌ DELETE THIS: import java.awt.event.ActionEvent; 
-
-// ✅ IMPORT THIS: The correct JavaFX Event class
-import javafx.event.ActionEvent; 
 import javafx.fxml.FXML;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color; // Thêm import này
 
 public class Controller {
-    
-    // All methods that handle FXML events MUST have the @FXML annotation
-    @FXML
-    public void up(ActionEvent e) {
-        System.out.println("up");
-    }
-    
-    @FXML
-    public void down(ActionEvent e) {
-        System.out.println("down");
-    }
-    
-    @FXML
-    public void left(ActionEvent e) {
-        System.out.println("left");
-    }
-    
-    @FXML
-    public void right(ActionEvent e) {
-        System.out.println("right");
-    }
+
+	@FXML
+	public void handleConnectButton() {
+	    System.out.println("Connect button clicked!");
+	    // Code kết nối SUMO sẽ viết vào đây sau
+	}
+
 }

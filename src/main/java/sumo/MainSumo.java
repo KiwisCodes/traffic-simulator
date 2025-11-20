@@ -11,7 +11,7 @@ public class MainSumo {
     public static void main(String[] args) {
         
         // --- 1. Define paths and load config file ---
-        String sumoBinary = "/Users/apple/sumo/bin/sumo-gui"; 
+        String sumoBinary = "/Users/duongquytrang/sumo/bin/sumo-gui"; 
         
         String configFileName = "frauasmap.sumocfg";
         String configFile;

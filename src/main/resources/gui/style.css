@@ -1,0 +1,135 @@
+/* ==================================================================
+   1. CÀI ĐẶT CHUNG (GLOBAL)
+   ================================================================== */
+.root {
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #e0e0e0; /* Màu nền tổng thể */
+}
+
+/* ==================================================================
+   2. MENU BAR (TOP)
+   ================================================================== */
+.menu-bar {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 0 0 1px 0; /* Chỉ kẻ viền dưới */
+}
+
+/* ==================================================================
+   3. KHU VỰC BẢN ĐỒ (CENTER)
+   ================================================================== */
+/* ID selector: Tự động áp dụng cho fx:id="mapPane" */
+#mapPane {
+    -fx-background-color: #2b2b2b; /* Màu xám đen (giả lập nhựa đường) */
+    -fx-border-color: #000000;
+    -fx-border-width: 1px;
+    /* Hiệu ứng đổ bóng nhẹ vào trong để tạo chiều sâu */
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);
+}
+
+/* ==================================================================
+   4. KHU VỰC ĐIỀU KHIỂN (RIGHT SIDEBAR)
+   ================================================================== */
+/* Class này bạn cần gán cho cái VBox bên phải */
+.control-panel {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #bfbfbf;
+    -fx-border-width: 0 0 0 1px; /* Viền ngăn cách với bản đồ */
+    -fx-padding: 15px;
+    -fx-spacing: 10px;
+}
+
+/* Tiêu đề "Control Panel" */
+.header-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+
+/* Đường kẻ ngang Separator */
+.separator *.line { 
+    -fx-border-style: solid;
+    -fx-border-width: 1px;
+    -fx-border-color: #e0e0e0;
+}
+
+/* ==================================================================
+   5. CÁC NÚT BẤM (BUTTONS)
+   ================================================================== */
+.button {
+    -fx-cursor: hand;
+    -fx-background-radius: 4px; /* Bo tròn nhẹ */
+    -fx-padding: 6px 12px;
+}
+
+/* Nút Connect (Màu mặc định - Xanh dương nhạt) */
+#btnConnect {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+#btnConnect:hover { -fx-background-color: #1976D2; }
+
+/* Nút Start (Màu Xanh Lá) */
+#btnStart {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+#btnStart:hover { -fx-background-color: #45a049; }
+
+/* Nút Stop (Màu Đỏ) */
+#btnStop {
+    -fx-background-color: #f44336;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+#btnStop:hover { -fx-background-color: #d32f2f; }
+
+/* ==================================================================
+   6. TAB PANE & INPUTS
+   ================================================================== */
+.tab-pane {
+    -fx-background-color: transparent;
+}
+.tab-header-background {
+    -fx-background-color: transparent;
+}
+/* Các ô nhập liệu */
+.text-field, .spinner, .combo-box {
+    -fx-background-radius: 3px;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 3px;
+}
+
+/* ==================================================================
+   7. TITLED PANE (STATISTICS)
+   ================================================================== */
+.titled-pane {
+    -fx-text-fill: #333;
+}
+.titled-pane > .title {
+    -fx-background-color: #e8e8e8; /* Màu nền thanh tiêu đề collapsible */
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1px;
+}
+.titled-pane > .content {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cccccc;
+}
+
+/* ==================================================================
+   8. THANH TRẠNG THÁI (BOTTOM STATUS BAR)
+   ================================================================== */
+/* Class này bạn cần gán cho HBox ở dưới cùng */
+.status-bar {
+    -fx-background-color: #dcdcdc;
+    -fx-border-color: #aaaaaa;
+    -fx-border-width: 1px 0 0 0; /* Chỉ kẻ viền trên */
+    -fx-padding: 5px 10px;
+}
+#lblStatus, #lblTime {
+    -fx-font-weight: bold;
+    -fx-text-fill: #444;
+}
