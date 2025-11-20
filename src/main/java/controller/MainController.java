@@ -2,6 +2,7 @@ package controller;
 
 import javafx.animation.AnimationTimer;
 import javafx.fxml.FXML;
+import javafx.scene.Group;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -13,7 +14,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polyline;
-import javafx.scene.layout.Pane; 
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
+import javafx.scene.layout.Pane;
 
 // Import the correct TraaS library (DLR version)
 import de.tudresden.sumo.cmd.*;
@@ -23,38 +26,31 @@ import it.polito.appeal.traci.SumoTraciConnection;
 // Java XML Parsing Imports
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 // Java Imports
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class MainController {
 
     // --- FXML View Elements ---
-    
-    @FXML private StackPane mapControlsContainer;
-    @FXML private VBox mapControlsVBox;
     @FXML private ScrollPane leftControlPanel;
     @FXML private ScrollPane mapScrollPane;
-    
-    // Simulation Control
+    @FXML private StackPane rootStackPane;
+
+    // Simulation Control Done
     @FXML private Button startButton;
     @FXML private Button pauseButton;
     @FXML private Button stepButton;
-    
-    // Vehicle Actions
+
+    // Vehicle Actions Done
     @FXML private TextField vehicleIdField;
     @FXML private TextField routeIdField;
     @FXML private Button injectVehicleButton;
@@ -62,8 +58,8 @@ public class MainController {
     @FXML private TextField vehicleSpeedField;
     @FXML private Button setVehicleColorButton;
     @FXML private TextField vehicleColorField;
-    
-    // Traffic Light Actions
+
+    // Traffic Light Actions Done
     @FXML private TextField trafficLightIdField;
     @FXML private Button setRedPhaseButton;
     @FXML private Button setGreenPhaseButton;
@@ -72,17 +68,23 @@ public class MainController {
     @FXML private TextField phaseDurationField;
     @FXML private CheckBox adaptiveTrafficCheck;
 
-    // Vehicle Filtering
+    // Vehicle Filtering Done
     @FXML private TextField filterColorField;
-    @FXML private TextField filterSpeedField;
+    @FXML private TextField filterMinSpeedField;
     @FXML private TextField filterEdgeField;
     @FXML private Button applyFilterButton;
     @FXML private Button clearFilterButton;
 
-    // Stress Testing
+    // Stress Testing Done
     @FXML private TextField stressEdgeField;
     @FXML private TextField stressCountField;
     @FXML private Button stressTestButton;
+
+    // Sumo-GUI Integration
+    @FXML private TextField pathToSumocfgFile;
+    @FXML private TextField pathToSumoGui;
+    @FXML private Button insertSumocfgButton;
+    @FXML private Button startSumoGuiButton;
 
     // Live Statistics
     @FXML private Label simStepLabel;
@@ -97,222 +99,182 @@ public class MainController {
     @FXML private Button exportCsvButton;
     @FXML private Button exportPdfButton;
 
-    // Sumo-GUI Integration (Placeholder fields to match FXML if present)
-    @FXML private TextField pathToSumocfgFile;
-    @FXML private TextField pathToSumoGui;
-    @FXML private Button insertSumocfgFile;
-    @FXML private Button startSumoGuiButton;
-
     // Map & Log
-    @FXML private Pane mapPane; 
+    @FXML private Pane routePane;
+    @FXML private Pane carPane;
+    @FXML private Pane busPane;
+    @FXML private Pane truckPane;
+    @FXML private Pane bikePane;
     @FXML private Label logLabel;
     @FXML private Button zoomInButton;
     @FXML private Button zoomOutButton;
     @FXML private Button resetViewButton;
     @FXML private ToggleButton toggle3DButton;
-    
+
     // --- SUMO & TraaS ---
-    private Process sumoProcess;
-    private SumoTraciConnection sumoConnection;
     private String sumoConfigPath;
-    private String netFilePath; 
 
-    // --- Visualization ---
-    private Map<String, Circle> vehicleShapes = new HashMap<>();
-    private double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
-    private double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
-    private AnimationTimer simulationTimer;
+    // --- Visualization Data ---
+    private double minX = Double.MAX_VALUE;
+    private double minY = Double.MAX_VALUE;
+    private double maxX = -Double.MAX_VALUE;
+    private double maxY = -Double.MAX_VALUE;
 
-    /**
-     * This method is called by JavaFX *after* the FXML file is loaded.
-     */
+    // SCALING FACTORS
+    private double baseScaleFactor = 1.0;
+    private double currentZoom = 1.0;
+    private final double PADDING = 50.0;
+
+    // NEW: Group to hold content. Group auto-sizes to fit children!
+    private Group mapContentGroup;
+
     @FXML
     public void initialize() {
         log("Initialization started.");
+        // 1. Setup the Container Structure for proper Scrolling
+        // We wrap the Panes in a Group. The ScrollPane will scroll this Group.
+        mapContentGroup = new Group();
+        // Add all your layers to this group
+        mapContentGroup.getChildren().addAll(routePane, carPane, busPane, truckPane, bikePane);
+        // Add the Group to the StackPane (which centers it)
+        rootStackPane.getChildren().clear(); // Clear placeholder
+        rootStackPane.getChildren().add(mapContentGroup);
+
         try {
-            // Find the .net.xml URL relative to resources
             URL netUrl = getClass().getResource("/frauasmap.net.xml");
             if (netUrl == null) {
-                log("FATAL ERROR: frauasmap.net.xml URL not found in classpath. Check /src/main/resources/ folder.");
+                log("FATAL ERROR: frauasmap.net.xml URL not found.");
                 return;
             }
-            log("SUCCESS: Found net.xml URL: " + netUrl.toExternalForm());
-            
-            // Find the .sumocfg URL (optional for drawing, needed for sim)
-            URL configUrl = getClass().getResource("/frauasmap.sumocfg");
-            if (configUrl != null) {
-                log("SUCCESS: Found sumocfg URL.");
-                try {
-                    sumoConfigPath = new File(configUrl.toURI()).getAbsolutePath();
-                } catch (Exception e) {
-                    log("Warning: Could not convert config URL to file path.");
-                }
-            }
-            
-            // --- DRAWING TRIGGER ---
-            // We pass the URL directly to ensure robust loading
-            drawMapNetwork(netUrl); 
+            drawMapNetwork(netUrl);
 
         } catch (Exception e) {
-            log("FATAL ERROR initializing file paths or drawing map: " + e.getMessage());
+            log("FATAL ERROR initializing: " + e.getMessage());
             e.printStackTrace();
         }
     }
-    
-    /**
-     * Parses the .net.xml file via URL, determines map boundaries, and draws the road network.
-     */
+
     private void drawMapNetwork(URL netXmlUrl) {
         log("--- Starting Map Drawing Process ---");
         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-        
         try {
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-            
-            // Parse directly from URL
-            Document doc = dBuilder.parse(netXmlUrl.toExternalForm()); 
+            Document doc = dBuilder.parse(netXmlUrl.toExternalForm());
             doc.getDocumentElement().normalize();
-            log("SUCCESS: XML document parsed successfully.");
-
-            // --- Step 1B: Find Map Boundary ---
-            NodeList locationNodes = doc.getElementsByTagName("location");
-            if (locationNodes.getLength() > 0) {
-                Element location = (Element) locationNodes.item(0);
-                
-                // 🔥 FIX: Using "convBoundary" because "netBoundary" was empty/missing in your XML
-                String boundaryStr = location.getAttribute("convBoundary");
-                String[] boundary = boundaryStr.split(",");
-                
-                if (boundary.length == 4) {
-                    try {
-                        minX = Double.parseDouble(boundary[0]);
-                        minY = Double.parseDouble(boundary[1]);
-                        maxX = Double.parseDouble(boundary[2]);
-                        maxY = Double.parseDouble(boundary[3]);
-                        log(String.format("SUCCESS: Map bounds set: (%.2f, %.2f) to (%.2f, %.2f)", minX, minY, maxX, maxY));
-                    } catch (NumberFormatException e) {
-                        log("ERROR: Could not parse boundary numbers: " + boundaryStr);
-                    }
-                } else {
-                    log("ERROR: Invalid boundary format in XML: " + boundaryStr);
-                }
-            } else {
-                log("WARNING: Could not find <location> tag. Drawing may be off-center.");
-            }
 
             NodeList laneNodes = doc.getElementsByTagName("lane");
             int laneCount = laneNodes.getLength();
-            
-            if (laneCount == 0) {
-                 log("WARNING: Found 0 <lane> elements. Nothing to draw.");
-                 return;
-            }
-            
-            log(String.format("Found %d lanes. Starting Polyline creation...", laneCount));
-            
-            // --- Step 2: Iterate and Draw Lanes ---
-            for (int i = 0; i < laneNodes.getLength(); i++) {
+
+            // --- Step 1: Parse ALL lanes first to find TRUE BOUNDS ---
+            List<List<Double>> allLanePoints = new ArrayList<>();
+
+            for (int i = 0; i < laneCount; i++) {
                 Element lane = (Element) laneNodes.item(i);
                 String shapeStr = lane.getAttribute("shape");
-                
                 if (shapeStr.isEmpty()) continue;
-                
-                Polyline roadShape = new Polyline(); 
+                List<Double> currentLanePoints = new ArrayList<>();
                 String[] points = shapeStr.split(" ");
-                
                 for (String point : points) {
                     String[] coords = point.split(",");
-                    
-                    // FIX: Parse the X and Y coordinates
                     if (coords.length == 2) {
                         try {
                             double x = Double.parseDouble(coords[0]);
                             double y = Double.parseDouble(coords[1]);
-
-                            // Transform and add to shape
-                            roadShape.getPoints().add(transformX(x)); 
-                            roadShape.getPoints().add(transformY(y));
-                        } catch (NumberFormatException e) {
-                            // Skip bad points
-                        }
+                            currentLanePoints.add(x);
+                            currentLanePoints.add(y);
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                        } catch (NumberFormatException e) { }
                     }
                 }
-                
-                roadShape.setStroke(Color.GRAY);
-                roadShape.setStrokeWidth(5);
-                mapPane.getChildren().add(roadShape); 
+                allLanePoints.add(currentLanePoints);
             }
-            
-            log("SUCCESS: Map drawing complete! Added " + laneCount + " lanes.");
+
+            // --- Step 2: Calculate Base Scale Factor ---
+            double mapWidth = maxX - minX;
+            double mapHeight = maxY - minY;
+            if (mapWidth <= 0) mapWidth = 1000;
+            if (mapHeight <= 0) mapHeight = 1000;
+
+            double availableWidth = mapScrollPane.getPrefWidth() - (PADDING * 2);
+            double availableHeight = mapScrollPane.getPrefHeight() - (PADDING * 2);
+            if (availableWidth <= 0) availableWidth = 1108 - PADDING;
+            if (availableHeight <= 0) availableHeight = 746 - PADDING;
+
+            double scaleX = availableWidth / mapWidth;
+            double scaleY = availableHeight / mapHeight;
+            // Fit to screen
+            baseScaleFactor = Math.min(scaleX, scaleY);
+
+            // * FORCE SCROLLING *
+            // We multiply by 1.2 (120% zoom) so the map is slightly larger than the screen.
+            // This forces scrollbars to appear.
+            currentZoom = 15;
+
+            log(String.format("Map Bounds: (%.2f, %.2f) to (%.2f, %.2f)", minX, minY, maxX, maxY));
+            log(String.format("Base Scale: %.4f | Current Zoom: %.2f", baseScaleFactor, currentZoom));
+
+            // --- Step 3: Resize the Panes ---
+            // This is CRITICAL. We must tell the panes exactly how big they are.
+            double displayWidth = mapWidth * baseScaleFactor * currentZoom + (PADDING * 2);
+            double displayHeight = mapHeight * baseScaleFactor * currentZoom + (PADDING * 2);
+            setPaneSizes(routePane, displayWidth, displayHeight);
+            setPaneSizes(carPane, displayWidth, displayHeight);
+            setPaneSizes(busPane, displayWidth, displayHeight);
+            setPaneSizes(truckPane, displayWidth, displayHeight);
+            setPaneSizes(bikePane, displayWidth, displayHeight);
+
+            // --- Step 4: Draw the shapes ---
+            for (List<Double> points : allLanePoints) {
+                Polyline roadShape = new Polyline();
+                for (int k = 0; k < points.size(); k += 2) {
+                    double x = points.get(k);
+                    double y = points.get(k+1);
+                    roadShape.getPoints().add(transformX(x));
+                    roadShape.getPoints().add(transformY(y));
+                }
+
+                roadShape.setStroke(Color.GRAY);
+                roadShape.setStrokeWidth(1);
+                routePane.getChildren().add(roadShape);
+            }
+            log("SUCCESS: Map drawing complete.");
 
         } catch (Exception e) {
-            log("FATAL ERROR during XML parsing/drawing: " + e.getMessage());
             e.printStackTrace();
+            log("Error drawing map: " + e.getMessage());
         }
-        log("--- Map Drawing Process Ended ---");
     }
 
-    /**
-     * This method is called when the "Start Simulation" button is clicked.
-     */
-    @FXML
-    private void startSimulation() {
-        log("Starting simulation... (SUMO LOGIC IS COMMENTED OUT FOR UI TEST)");
-        // Logic to start TraaS would go here
-    }
-    
-    /**
-     * Creates and starts the main simulation loop.
-     */
-    private void startAnimationTimer() {
-        /*
-        // --- SUMO LOGIC (Commented out for UI testing) ---
-        simulationTimer = new AnimationTimer() {
-            @Override
-            public void handle(long now) {
-                 // ... simulation loop ...
-            }
-        };
-        simulationTimer.start();
-        */
-    }
-
-    /**
-     * This method is called by MainGUI when the window is closed.
-     */
-    public void shutdown() {
-        log("Shutting down...");
-        if (simulationTimer != null) {
-            simulationTimer.stop();
-        }
-        // Logic to destroy SUMO process would go here
+    private void setPaneSizes(Pane pane, double w, double h) {
+        pane.setPrefSize(w, h);
+        pane.setMinSize(w, h);
+        pane.setMaxSize(w, h);
     }
 
     // --- Coordinate Transformation Helpers ---
 
     private double transformX(double sumoX) {
-        // (sumoX - minX) shifts map to 0
-        // + 50.0 adds padding
-        return (sumoX - minX) + 50.0;
-    }
-    
-    private double transformY(double sumoY) {
-        // (maxY - sumoY) flips the Y axis (SUMO is up, JavaFX is down)
-        // + 50.0 adds padding
-        return (maxY - sumoY) + 50.0;
+        // (X - Min) * Scale * Zoom + Padding
+        return ((sumoX - minX) * baseScaleFactor * currentZoom) + PADDING;
     }
 
-    // --- Utility Helper ---
-    
+    private double transformY(double sumoY) {
+        // (Max - Y) * Scale * Zoom + Padding
+        return ((maxY - sumoY) * baseScaleFactor * currentZoom) + PADDING;
+    }
+
     private void log(String message) {
-        System.out.println(message); 
+        System.out.println(message);
         if (logLabel != null) {
-            String oldLog = logLabel.getText();
-            logLabel.setText(message + "\n" + oldLog);
+            logLabel.setText(message + "\n" + logLabel.getText());
         }
     }
-    	
-    // --- Placeholder Action Methods to satisfy FXML ---
+
+    // --- Placeholder Action Methods ---
+    @FXML private void startSimulation() {}
     @FXML private void pauseSimulation() {}
     @FXML private void stepSimulation() {}
     @FXML private void injectVehicle() {}

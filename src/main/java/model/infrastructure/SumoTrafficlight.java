@@ -1,19 +1,20 @@
 package model.infrastructure;
-import de.tudresden.sumo.cmd.*;
-import de.tudresden.sumo.objects.*;
 
 public class SumoTrafficlight {
-	private String id;
-	private SumoPosition2D coordinates;
-	private String currentState;
-	private int currentPhase;
-	private static int numberOfTrafficLights;
-	
-	SumoTrafficlight(String id){}
-	public String getCurrentState() {}
-	public int getCurrentPhase() {}
-	public void setCurrentState() {}
-	
-	}
-	
+    
+    private String id;
+    private String currentState; // e.g., "rGGr"
+    private double phaseDuration;
+
+    public SumoTrafficlight(String id) {
+        this.id = id;
+    }
+
+    public String getId() { return id; }
+    
+    public String getCurrentState() { return currentState; }
+    public void setCurrentState(String currentState) { this.currentState = currentState; }
+    
+    public double getPhaseDuration() { return phaseDuration; }
+    public void setPhaseDuration(double phaseDuration) { this.phaseDuration = phaseDuration; }
 }

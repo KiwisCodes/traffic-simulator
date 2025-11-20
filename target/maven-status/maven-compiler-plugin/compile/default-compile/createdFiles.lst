@@ -1,5 +1,4 @@
-gui/MainGUI.class
-gui/Controller.class
-ProjectMain/ProjectMain.class
-sumo/TestSumo.class
-sumo/SimulationManager.class
+controller/SimulationLogger.class
+model/vehicles/SumoVehicle.class
+view/MainGUI.class
+model/vehicles/Car.class
