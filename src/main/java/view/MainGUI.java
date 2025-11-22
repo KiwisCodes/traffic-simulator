@@ -13,9 +13,15 @@ import javafx.stage.Stage;
 
 import java.net.URL;
 
+import controller.MainController;
+
 public class MainGUI extends Application {
 	// Reference the new main view file
 	private static final String FXML_VIEW = "/gui/MainView.fxml"; 
+	
+	public static int windowWidth = 1400;
+	public static int windowHeight = 900;
+	
 	@FXML private static BorderPane borderPaneContainer;
 	    @FXML private static HBox simulationHeader;
 	    @FXML private static TitledPane bottomLogArea;
@@ -38,9 +44,17 @@ public class MainGUI extends Application {
 	        
 	        FXMLLoader loader = new FXMLLoader(fxmlUrl);
 	        Parent root = loader.load();
+	        MainController controller = loader.getController();
 
 	        primaryStage.setTitle("Cool Traffic Simulator");
-	        primaryStage.setScene(new Scene(root, 1400, 900)); // Set default size
+	        primaryStage.setScene(new Scene(root, windowWidth, windowHeight)); // Set default size
+	        
+	        primaryStage.setOnCloseRequest(event -> {
+                System.out.println("Window closing...");
+                controller.stopSimulation(); // Stop threads before exit
+                // Optional: Force kill if threads are stubborn
+                // System.exit(0); 
+            });
 	        primaryStage.show();
 	    }
 

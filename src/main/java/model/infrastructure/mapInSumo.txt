@@ -22,3 +22,30 @@
           │    └── Shape
           │
           └── Lane ...
+          
+          
+How to Iterate (The Loop Logic)
+
+To draw the map fully, your code loop logic should look like this structure:
+
+
+
+Get NetBoundary: Create your window.
+
+Get all Edge IDs: Loop through them.
+
+Inside the Edge loop:
+
+Get the number of lanes for this edge. (Use getLaneNumber())
+
+Construct the Lane ID strings manually (EdgeID + "_" + index).
+
+Draw the Lane: Get Shape and Width for that Lane ID and draw it.
+
+Get all Junction IDs: Loop through them.
+
+Draw the Junction: Get Shape (Polygon) and fill it with gray.
+
+
+
+
