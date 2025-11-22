@@ -1,226 +1,200 @@
-package model; 
+package model;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import de.tudresden.sumo.cmd.*; 
-import de.tudresden.sumo.cmd.Vehicle;
-import de.tudresden.sumo.util.SumoCommand;
 import it.polito.appeal.traci.*;
+import de.tudresden.sumo.cmd.*;
+// Assuming these classes exist in your project structure
+import model.vehicles.SumoVehicle;
+import model.infrastructure.SumoTrafficlight;
 
 public class SimulationManager {
+
+    // --- Configuration ---
+    // Make sure this path is correct and points to the executable, not the folder
+    private String sumoPath = "/Users/apple/sumo/bin/sumo"; 
+    private String sumoConfigFileName = "frauasmap.sumocfg";
+    private String sumoConfigFilePath;
+    private String stepLength = "0.001"; // Standard step length is usually 0.1s or 1.0s
+
+    // --- TraCI Connection ---
     private SumoTraciConnection sumoConnection;
-    // Stores the String IDs of active vehicles
-    private List<String> currentVehicleIDs; 
-    private List<String> currentVehicleTypes;
-    private List<String> currentRouteIDs;
-    
-    // ====================================================================
-    // 1. MAIN METHOD (Corrected) 🚦
-    // ====================================================================
-    public static void main(String[] args) {
-        SimulationManager manager = new SimulationManager();
-        
-        // This method handles setup, connection, and runs the entire simulation.
-        manager.startSimulation();
+
+    // --- State Data ---
+    private List<SumoVehicle> activeVehicles;
+    private Map<String, SumoTrafficlight> activeTrafficlights;
+    private StatisticsManager statisticsManager;
+    private ReportManager reportManager;
+    private int currentStep = 0;
+
+    public SimulationManager() {
+        this.activeVehicles = new ArrayList<>();
+        this.activeTrafficlights = new HashMap<>();
+        this.statisticsManager = new StatisticsManager();
+        this.reportManager = new ReportManager();
     }
 
-    // New wrapper method to organize the simulation process
-    private void startSimulation() {
-        if (makeTraciConnection()) { // Only proceed if connection is successful
-            try {
-                // Now proceed to run the simulation loop
-            	getVehicleTypes();
-                getRoutes();
-                for(String vt:currentVehicleTypes) {
-               	 System.out.print(vt + " ");
-                }
-                System.out.println("");
-                for(String r:currentRouteIDs) {
-               	 System.out.print(r + " ");
-                }
-                System.out.println("");
-                
-                String vehID = "MyBike";
-                String routeID = this.currentRouteIDs.get(0);
-                String typeID = "DEFAULT_BIKETYPE";
-                
-                int capacity = 0;
-                int passengers = 0;
+    /**
+     * Main entry point to start the simulation.
+     * Returns true if simulation started and finished loop successfully.
+     */
+    public void startConnection() {
+        // 1. RESOLVE FILE PATHS
+        if (!setupPaths()) {
+            return;
+        }
 
-                SumoCommand addBike = Vehicle.addFull(
-                    vehID,            // vehID
-                    routeID,                   // routeID
-                    typeID,         // typeID
-                    "0",                       // depart: Time 0 (immediate)
-                    "best",                    // departLane: SUMO chooses best lane
-                    "0",                       // departPosition: Start of the edge
-                    "max",                     // departSpeed: Max speed defined by type
-                    "current",                        // arrivalLane: (Default)
-                    "random",                        // arrivalPosition: (Default)
-                    "current",                        // arrivalSpeed: (Default)
-                    "",                        // fromTAZ: (None)
-                    "",                        // toTAZ: (None)
-                    "",                        // line: (None)
-                    capacity,                  // person_capacity: 0
-                    passengers                 // person_number: 0
-                );
-                this.sumoConnection.do_job_set(addBike);
-                
-            	
-                runSimulationLoop(); 
-            } catch (Exception e) {
-                System.err.println("Critical error during simulation: " + e.getMessage());
-                e.printStackTrace();
-            }
+        // 2. INITIALIZE CONNECTION OBJECT
+        // We print the paths to console to verify they are correct before running
+        System.out.println("Creating connection with:");
+        System.out.println("  > Binary: " + this.sumoPath);
+        System.out.println("  > Config: " + this.sumoConfigFilePath);
+        
+        this.sumoConnection = new SumoTraciConnection(this.sumoPath, this.sumoConfigFilePath);
+
+        // 3. CONFIGURE SUMO OPTIONS
+        // "start" -> null means simple flag "--start" (starts sim immediately without waiting for 'play' button)
+        this.sumoConnection.addOption("start", null); 
+        this.sumoConnection.addOption("step-length", this.stepLength);
+        
+        // Standard options to prevent getting stuck
+        this.sumoConnection.printSumoOutput(true);
+        this.sumoConnection.printSumoError(true);
+
+        // 4. START SERVER AND RUN LOOP
+        try {
+            System.out.println("⏳ Launching SUMO... (This may pause until TraCI connects)");
+            
+            // This method BLOCKS until SUMO is open and the TraCI connection is accepted.
+            this.sumoConnection.runServer();
+            
+            System.out.println("✅ Connection established! Starting simulation loop...");
+            
+            // Once runServer returns, the connection is alive. Now we run the loop.
+            runSimulationLoop();
+            
+            return;
+
+        } catch (IOException e) {
+            System.err.println("❌ IO Error: Could not start SUMO or connect.");
+            System.err.println("   Check if 'sumo-gui' path is correct and accessible.");
+            e.printStackTrace();
+            return;
+        } catch (Exception e) {
+            System.err.println("❌ Runtime Error during simulation.");
+            e.printStackTrace();
+            return;
+        } finally {
+            stopSimulation();
         }
     }
-    
-    // ===================================================================
-    // 2. CONNECTION SETUP 🔗
-    // ====================================================================
-    private boolean makeTraciConnection() {
-        // --- STEP 1 & 2: Define paths and Instantiate ---
-        String sumoExecutablePath = "/Users/apple/sumo/bin/sumo-gui"; 
-        String sumoCfgFilePath = "/Users/apple/eclipse-workspace/traffic-simulator/src/main/resources/frauasmap.sumocfg"; 
-        
-        this.sumoConnection = new SumoTraciConnection(sumoExecutablePath, sumoCfgFilePath);
-        
+
+    /**
+     * Safely resolves the config file path.
+     */
+    private boolean setupPaths() {
         try {
-            // Add the option BEFORE runServer()
-            sumoConnection.addOption("step-length", "0.001");
-            System.out.println("Configured SUMO step length to 0.001s.");
+            URL resource = SimulationManager.class.getClassLoader().getResource(this.sumoConfigFileName);
             
-            // --- STEP 3: Run the Server ---
-            sumoConnection.runServer();
-            System.out.println("SUMO server running. Connection established.");
+            if (resource == null) {
+                System.err.println("❌ CRITICAL: '" + this.sumoConfigFileName + "' not found in resources!");
+                return false;
+            }
+
+            // FIX: use toURI() to handle spaces/special characters in path correctly
+            File file = new File(resource.toURI());
+            this.sumoConfigFilePath = file.getAbsolutePath();
+            
+            // Optional: Check if SUMO binary exists to fail fast
+            File sumoBin = new File(this.sumoPath);
+            if(!sumoBin.exists() || !sumoBin.canExecute()) {
+                System.err.println("❌ CRITICAL: SUMO binary not found or not executable at: " + this.sumoPath);
+                return false;
+            }
+            
             return true;
-            
         } catch (Exception e) {
-            System.err.println("Error in TraCI connection setup: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("❌ Error resolving file paths: " + e.getMessage());
             return false;
         }
     }
-    
-    // ====================================================================
-    // 3. VEHICLE ID RETRIEVAL (Used during simulation) 🗺️
-    // ====================================================================
-    // Method now uses instance variable this.sumoConnection
-    private void getVehicleIDs() throws Exception {
-        Object result = this.sumoConnection.do_job_get(Vehicle.getIDList());
-        
-        // Correctly cast the result to List<String> (IDs)
-        @SuppressWarnings("unchecked")
-        List<String> ids = (List<String>) result;
-        
-        this.currentVehicleIDs = ids;
-        // System.out.println("Fetched " + this.currentVehicleIDs.size() + " vehicle IDs.");
-    }
-    
-    private void getVehicleTypes() throws Exception {
-    	Object result = this.sumoConnection.do_job_get(Vehicletype.getIDList());
-    	@SuppressWarnings("unchecked")
-    	List<String> ids = (List<String>) result;
-    	this.currentVehicleTypes = ids;
-    	
-    }
-    private void getRoutes() throws Exception {
-    	Object result = this.sumoConnection.do_job_get(Route.getIDList());
-    	@SuppressWarnings("unchecked")
-    	List<String> ids = (List<String>) result;
-    	this.currentRouteIDs = ids;
-    }
-    
-    
-    // ====================================================================
-    // 4. SIMULATION LOOP (Main Execution) ⏱️
-    // ====================================================================
-    private void runSimulationLoop() {
-        // 100,000 steps at 0.001s/step = 100 seconds of simulated time.
-        int maxSteps = 100000; 
-        int step = 0;
-        
-        try {
-            while (step < maxSteps) {
-                // --- A. DATA FETCHING (e.g., every 1 second of simulation time) ---
-            	
-//            	if(step == 10000) {
-//            		getVehicleTypes();
-//                    getRoutes();
-//                	this.sumoConnection.do_job_set(Vehicle.add("150", 
-//                			"DEFAULT_BIKETYPE", 
-//                			testRoute, 
-//                			10,
-//                			0,
-//                			3.6, 
-//                			(byte)0));
-//            	}
-            	
-                if (step % 1000 == 0) { 
-                	Object posObj = this.sumoConnection.do_job_get(Vehicle.getPosition("MyBike"));
-    			    System.out.println("Vehicle MyBike position: " + posObj);
-                    getVehicleIDs();
-//                    getVehicleTypes();
-//                    getRoutes();
-                }
-                
-//                // --- B. TRAFFIC CONTROL (Example: Speed setting) ---
-//                if (currentVehicleIDs != null && !currentVehicleIDs.isEmpty()) {
-//                    interactWithVehicles();
-//                }
 
-                // --- C. ADVANCE TIME STEP ---
-                this.sumoConnection.do_timestep();
-                
-                if (step % 10000 == 0) {
-                     System.out.println("Simulated Time: " + (step * 0.001) + " s | Active Vehicles: " + currentVehicleIDs.size());
-                     for(String v:currentVehicleIDs) {
-                    	 System.out.print(v + " ");
-                     }
-                     System.out.println("");
-                     for(String vt:currentVehicleTypes) {
-                    	 System.out.print(vt + " ");
-                     }
-                     System.out.println("");
-                     
-                }
-                
-                step++;
-            }
+    public void runSimulationLoop() {
+        // Run for 10000 steps or until connection is lost
+        int targetSteps = 1000000;
+        
+        System.out.println("   -> Running for " + targetSteps + " steps...");
+        
+        if(!this.sumoConnection.isClosed()) {
+        	try {
+				Object result = this.sumoConnection.do_job_get(Edge.getIDList());
+				@SuppressWarnings("unchecked")
+				List<String> currentEdges = (List<String>)result;
+				for(String edge:currentEdges) {
+					System.out.println(edge);
+				}
+				System.out.println(currentEdges.size());
+				
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        }
+
+//        for (int i = 0; i < targetSteps; i++) {
+//            // Safety check to ensure we don't step on a closed connection
+//            if (this.sumoConnection.isClosed()) {
+//                System.out.println("⚠️ Connection closed unexpectedly.");
+//                break;
+//            }
+//
+//            step();
+//            
+//            // Optional: Print progress every 100 steps
+//            if (i % 100 == 0) {
+//                System.out.println("   Step: " + i);
+//            }
+//        }
+        System.out.println("✅ Simulation loop finished.");
+    }
+
+    public void step() {
+        try {
+            // 1. Advance Simulation
+            this.sumoConnection.do_timestep();
+            
+            // 2. Update internal state
+            this.currentStep++;
+
+            // (Placeholders for your logic)
+            // updateActiveVehicles();
+            // updateTrafficLights();
+            
         } catch (Exception e) {
-            System.err.println("Error during simulation loop at step " + step + ": " + e.getMessage());
+            System.err.println("❌ Error during timestep " + currentStep);
             e.printStackTrace();
-        } finally {
-            // Ensure the connection is closed
-            if (sumoConnection != null && !sumoConnection.isClosed()) {
-                try {
-                    sumoConnection.close();
-                    System.out.println("SUMO connection successfully closed.");
-                } catch (Exception e) {
-                    System.err.println("Error closing connection: " + e.getMessage());
-                }
-            }
+            // If a step fails, we might want to stop the loop
+            stopSimulation(); 
         }
     }
-    
-    // ====================================================================
-    // 5. VEHICLE INTERACTION (Example Logic) 🚗
-    // ====================================================================
-//    private void interactWithVehicles() throws Exception {
-//        // Simple example: check the first vehicle and control its speed
-//        String targetID = currentVehicleIDs.get(0);
-//        
-//        // Get current speed
-//        double currentSpeed = (double) this.sumoConnection.do_job_get(
-//            new Cmd_getVehicleVariable(POI.getSpeed, targetID)
-//        );
-//        
-//        // Control logic: if speed is low, set it higher (15.0 m/s)
-//        if (currentSpeed < 10.0) {
-//            this.sumoConnection.do_job_set(
-//                new Cmd_setVehicleVariable(POI.setSpeed, targetID, 15.0)
-//            );
-//        }
-//    }
+
+    public void stopSimulation() {
+        if (this.sumoConnection != null && !this.sumoConnection.isClosed()) {
+            this.sumoConnection.close();
+            System.out.println("🔌 Connection closed.");
+        }
+    }
+
+    // --- Getters ---
+    public List<SumoVehicle> getActiveVehicles() { return activeVehicles; }
+    public StatisticsManager getStatisticsManager() { return statisticsManager; }
+    public ReportManager getReportManager() { return reportManager; }
+    public int getCurrentStep() { return currentStep; }
+    public SumoTraciConnection getConnection() { return sumoConnection; }
 }

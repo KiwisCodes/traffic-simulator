@@ -1,0 +1,24 @@
+[Network Map]
+│
+├── (1) The Bounds
+│    └── NetBoundary (MinX, MinY, MaxX, MaxY) defines the canvas size.
+│
+├── (2) Junctions (The "Nodes" or Intersections)
+│    ├── Junction ID (e.g., "J1")
+│    └── Shape (A Polygon describing the area of the intersection)
+│
+└── (3) Edges (The "Roads" connecting Junctions)
+     │
+     ├── Edge ID (e.g., "main_street")
+     │
+     └── Lanes (The actual strips of asphalt inside the Edge)
+          ├── Lane 0 (Rightmost lane)
+          │    ├── ID (e.g., "main_street_0")
+          │    ├── Width (e.g., 3.2 meters)
+          │    └── Shape (List of X,Y points to draw the line)
+          │
+          ├── Lane 1
+          │    ├── ID (e.g., "main_street_1")
+          │    └── Shape
+          │
+          └── Lane ...

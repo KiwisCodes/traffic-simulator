@@ -16,6 +16,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polyline;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
+import model.SimulationManager;
 import javafx.scene.layout.Pane;
 
 // Import the correct TraaS library (DLR version)
@@ -82,7 +83,7 @@ public class MainController {
 
     // Sumo-GUI Integration
     @FXML private TextField pathToSumocfgFile;
-    @FXML private TextField pathToSumoGui;
+    @FXML private TextField pathToSumoGui; //or Sumo
     @FXML private Button insertSumocfgButton;
     @FXML private Button startSumoGuiButton;
 
@@ -111,8 +112,14 @@ public class MainController {
     @FXML private Button resetViewButton;
     @FXML private ToggleButton toggle3DButton;
 
-    // --- SUMO & TraaS ---
-    private String sumoConfigPath;
+ // --- Logic & State ---
+    private SimulationManager simManager;
+    private Thread simulationThread; // Thread 2: The Engine
+    private AnimationTimer uiLoop;   // Thread 1: The UI Renderer
+    
+
+    // Map to track visual shapes: ID -> Shape
+    private Map<String, Shape> vehicleVisuals = new HashMap<>();
 
     // --- Visualization Data ---
     private double minX = Double.MAX_VALUE;
@@ -124,157 +131,38 @@ public class MainController {
     private double baseScaleFactor = 1.0;
     private double currentZoom = 1.0;
     private final double PADDING = 50.0;
-
-    // NEW: Group to hold content. Group auto-sizes to fit children!
-    private Group mapContentGroup;
+    
+    MainController(){
+    	this.simManager = new SimulationManager();
+    	this.simulationThread = new Thread();
+    	
+    }
+    
+    public static void main (String[] args) {
+    	//This main function is the temporary app entry, run as java applicatin here
+    	MainController newController = new MainController();
+    	newController.startSimulation();
+    	
+    	
+    }
+   
 
     @FXML
     public void initialize() {
-        log("Initialization started.");
-        // 1. Setup the Container Structure for proper Scrolling
-        // We wrap the Panes in a Group. The ScrollPane will scroll this Group.
-        mapContentGroup = new Group();
-        // Add all your layers to this group
-        mapContentGroup.getChildren().addAll(routePane, carPane, busPane, truckPane, bikePane);
-        // Add the Group to the StackPane (which centers it)
-        rootStackPane.getChildren().clear(); // Clear placeholder
-        rootStackPane.getChildren().add(mapContentGroup);
-
-        try {
-            URL netUrl = getClass().getResource("/frauasmap.net.xml");
-            if (netUrl == null) {
-                log("FATAL ERROR: frauasmap.net.xml URL not found.");
-                return;
-            }
-            drawMapNetwork(netUrl);
-
-        } catch (Exception e) {
-            log("FATAL ERROR initializing: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private void drawMapNetwork(URL netXmlUrl) {
-        log("--- Starting Map Drawing Process ---");
-        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-        try {
-            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.parse(netXmlUrl.toExternalForm());
-            doc.getDocumentElement().normalize();
-
-            NodeList laneNodes = doc.getElementsByTagName("lane");
-            int laneCount = laneNodes.getLength();
-
-            // --- Step 1: Parse ALL lanes first to find TRUE BOUNDS ---
-            List<List<Double>> allLanePoints = new ArrayList<>();
-
-            for (int i = 0; i < laneCount; i++) {
-                Element lane = (Element) laneNodes.item(i);
-                String shapeStr = lane.getAttribute("shape");
-                if (shapeStr.isEmpty()) continue;
-                List<Double> currentLanePoints = new ArrayList<>();
-                String[] points = shapeStr.split(" ");
-                for (String point : points) {
-                    String[] coords = point.split(",");
-                    if (coords.length == 2) {
-                        try {
-                            double x = Double.parseDouble(coords[0]);
-                            double y = Double.parseDouble(coords[1]);
-                            currentLanePoints.add(x);
-                            currentLanePoints.add(y);
-                            if (x < minX) minX = x;
-                            if (x > maxX) maxX = x;
-                            if (y < minY) minY = y;
-                            if (y > maxY) maxY = y;
-                        } catch (NumberFormatException e) { }
-                    }
-                }
-                allLanePoints.add(currentLanePoints);
-            }
-
-            // --- Step 2: Calculate Base Scale Factor ---
-            double mapWidth = maxX - minX;
-            double mapHeight = maxY - minY;
-            if (mapWidth <= 0) mapWidth = 1000;
-            if (mapHeight <= 0) mapHeight = 1000;
-
-            double availableWidth = mapScrollPane.getPrefWidth() - (PADDING * 2);
-            double availableHeight = mapScrollPane.getPrefHeight() - (PADDING * 2);
-            if (availableWidth <= 0) availableWidth = 1108 - PADDING;
-            if (availableHeight <= 0) availableHeight = 746 - PADDING;
-
-            double scaleX = availableWidth / mapWidth;
-            double scaleY = availableHeight / mapHeight;
-            // Fit to screen
-            baseScaleFactor = Math.min(scaleX, scaleY);
-
-            // * FORCE SCROLLING *
-            // We multiply by 1.2 (120% zoom) so the map is slightly larger than the screen.
-            // This forces scrollbars to appear.
-            currentZoom = 15;
-
-            log(String.format("Map Bounds: (%.2f, %.2f) to (%.2f, %.2f)", minX, minY, maxX, maxY));
-            log(String.format("Base Scale: %.4f | Current Zoom: %.2f", baseScaleFactor, currentZoom));
-
-            // --- Step 3: Resize the Panes ---
-            // This is CRITICAL. We must tell the panes exactly how big they are.
-            double displayWidth = mapWidth * baseScaleFactor * currentZoom + (PADDING * 2);
-            double displayHeight = mapHeight * baseScaleFactor * currentZoom + (PADDING * 2);
-            setPaneSizes(routePane, displayWidth, displayHeight);
-            setPaneSizes(carPane, displayWidth, displayHeight);
-            setPaneSizes(busPane, displayWidth, displayHeight);
-            setPaneSizes(truckPane, displayWidth, displayHeight);
-            setPaneSizes(bikePane, displayWidth, displayHeight);
-
-            // --- Step 4: Draw the shapes ---
-            for (List<Double> points : allLanePoints) {
-                Polyline roadShape = new Polyline();
-                for (int k = 0; k < points.size(); k += 2) {
-                    double x = points.get(k);
-                    double y = points.get(k+1);
-                    roadShape.getPoints().add(transformX(x));
-                    roadShape.getPoints().add(transformY(y));
-                }
-
-                roadShape.setStroke(Color.GRAY);
-                roadShape.setStrokeWidth(1);
-                routePane.getChildren().add(roadShape);
-            }
-            log("SUCCESS: Map drawing complete.");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            log("Error drawing map: " + e.getMessage());
-        }
-    }
-
-    private void setPaneSizes(Pane pane, double w, double h) {
-        pane.setPrefSize(w, h);
-        pane.setMinSize(w, h);
-        pane.setMaxSize(w, h);
+        
     }
 
     // --- Coordinate Transformation Helpers ---
 
-    private double transformX(double sumoX) {
-        // (X - Min) * Scale * Zoom + Padding
-        return ((sumoX - minX) * baseScaleFactor * currentZoom) + PADDING;
-    }
 
-    private double transformY(double sumoY) {
-        // (Max - Y) * Scale * Zoom + Padding
-        return ((maxY - sumoY) * baseScaleFactor * currentZoom) + PADDING;
-    }
 
-    private void log(String message) {
-        System.out.println(message);
-        if (logLabel != null) {
-            logLabel.setText(message + "\n" + logLabel.getText());
-        }
-    }
 
     // --- Placeholder Action Methods ---
-    @FXML private void startSimulation() {}
+    @FXML private void startSimulation() {
+    	this.simManager.startConnection();
+    }
+    
+    
     @FXML private void pauseSimulation() {}
     @FXML private void stepSimulation() {}
     @FXML private void injectVehicle() {}
