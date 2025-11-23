@@ -55,18 +55,18 @@ traffic-simulator
 │   ├── main
 │   │   ├── java
 │   │   │   ├── controller
-│   │   │   │   ├── MainController.java        # [UI LOGIC] Handles buttons, timers, and connects View to Model
+│   │   │   │   ├── MainController.java        # [UI LOGIC] Handles buttons, timers, and connects View to Model, Run 3 Threads, 1 Main for Javafx, 2 background Threads
 │   │   │   │   └── MapInteractionHandler.java # [UX] Handles Mouse Drag/Scroll on the map
 │   │   │   ├── model
 │   │   │   │   ├── ReportManager.java         # [IO] Exports stats to CSV/PDF
-│   │   │   │   ├── SimulationManager.java     # [CORE] Runs the thread, talks to SUMO
+│   │   │   │   ├── SimulationManager.java     # [CORE] talks to SUMO, get data, has other Managers, update Managers' data
 │   │   │   │   ├── StatisticsManager.java     # [DATA] Calculates averages and counters
 │   │   │   │   ├── infrastructure
-│   │   │   │   │   ├── SumoMap.java           # [DATA] Holds static road network data
-│   │   │   │   │   ├── SumoTrafficlight.java  # [DATA] Holds traffic light state
+│   │   │   │   │   ├── MapManager.java           # [DATA] Holds static road network data
+│   │   │   │   │   ├── TrafficlightManager.java  # [DATA] Holds traffic light state
 │   │   │   │   │   └── mapInSumo.txt          # Helper/Debug text for map data
 │   │   │   │   └── vehicles
-│   │   │   │       └── Vehicle.java           # [ENTITY] Base class for cars/buses
+│   │   │   │       └── VehicleManager.java           # [ENTITY] Base class for cars/buses
 │   │   │   ├── testjava
 │   │   │   │   └── TestSumo.java              # [TEST] Quick console test to verify TraCI connection
 │   │   │   ├── util
