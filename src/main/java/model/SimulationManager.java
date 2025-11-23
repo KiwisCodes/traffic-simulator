@@ -12,15 +12,15 @@ import java.util.Map;
 import it.polito.appeal.traci.*;
 import de.tudresden.sumo.cmd.*;
 // Import your vehicle classes
-import model.vehicles.Vehicle;
+import model.vehicles.VehicleManager;
 //import model.vehicles.Car;
 //import model.vehicles.Bus;
 //import model.vehicles.Truck;
 //import model.vehicles.Bike;
 
 // Import Infrastructure
-import model.infrastructure.SumoMap;
-import model.infrastructure.SumoTrafficlight;
+import model.infrastructure.MapManger;
+import model.infrastructure.TrafficlightManager;
 
 /**
  * The Core Logic Engine of the Application.
@@ -52,13 +52,13 @@ public class SimulationManager {
 
     // --- State Data (The "World") ---
     // 'volatile' ensures that changes to the reference are immediately visible to other threads
-    private volatile List<Vehicle> activeVehicles;
-    private volatile Map<String, SumoTrafficlight> activeTrafficlights;
+    private volatile List<VehicleManager> activeVehicles;
+    private volatile Map<String, TrafficlightManager> activeTrafficlights;
     
     // Sub-Managers & Infrastructure
     private StatisticsManager statisticsManager;
     private ReportManager reportManager;
-    private SumoMap sumoMap; // Holds static map data (Lanes, Edges)
+    private MapManger sumoMap; // Holds static map data (Lanes, Edges)
     
     private volatile int currentStep = 0;
     private volatile boolean isRunning = false;
@@ -98,7 +98,7 @@ public class SimulationManager {
             this.sumoConnection.runServer(); // Starts the SUMO process
             
             // Load Static Map Data (Edges/Bounds) immediately after connecting
-            this.sumoMap = new SumoMap(sumoConnection);
+            this.sumoMap = new MapManger(sumoConnection);
             // You would call methods here to populate sumoMap using TraCI calls:
             // loadStaticMapData(); (Implementation logic from previous chat)
             
@@ -238,7 +238,7 @@ public class SimulationManager {
      * The GUI can iterate over this list without crashing, even if the
      * simulation thread updates the "real" list in the background.
      */
-    public List<Vehicle> getActiveVehicles() {
+    public List<VehicleManager> getActiveVehicles() {
         synchronized (stateLock) {
 /*
 Synchornize keyword
@@ -293,5 +293,5 @@ Therefore, any method that promises to return a List can legally return an Array
     public ReportManager getReportManager() { return reportManager; }
     public int getCurrentStep() { return currentStep; } // Volatile makes this safe
     public SumoTraciConnection getConnection() { return sumoConnection; }
-    public SumoMap getSumoMap() { return sumoMap; }
+    public MapManger getSumoMap() { return sumoMap; }
 }

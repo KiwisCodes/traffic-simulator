@@ -1,12 +1,12 @@
 package model.infrastructure;
 
-public class SumoTrafficlight {
+public class TrafficlightManager {
     
     private String id;
     private String currentState; // e.g., "rGGr"
     private double phaseDuration;
 
-    public SumoTrafficlight(String id) {
+    public TrafficlightManager(String id) {
         this.id = id;
     }
 

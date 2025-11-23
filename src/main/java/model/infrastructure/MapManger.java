@@ -10,7 +10,7 @@ import de.tudresden.sumo.cmd.Simulation;
 import de.tudresden.ws.container.SumoBoundingBox; // Or use simple doubles
 import it.polito.appeal.traci.SumoTraciConnection;
 
-public class SumoMap {
+public class MapManger {
 
     // --- Static Network Data ---
     private List<String> edgeIds;
@@ -26,7 +26,7 @@ public class SumoMap {
     private double maxX;
     private double maxY;
 
-    public SumoMap(SumoTraciConnection sumoConnection) {
+    public MapManger(SumoTraciConnection sumoConnection) {
         if(!sumoConnection.isClosed()) {
         	try {
 				Object result = sumoConnection.do_job_get(Edge.getIDList());

@@ -1,7 +1,7 @@
 package util;
 
 import javafx.geometry.Point2D;
-import model.infrastructure.SumoMap;
+import model.infrastructure.MapManger;
 import view.MainGUI;
 import de.tudresden.ws.container.SumoPosition2D; 
 
@@ -30,7 +30,7 @@ public class CoordinateConverter {
     }
     
     
-    public void setBound(SumoMap map) {
+    public void setBound(MapManger map) {
         this.mapMinX = map.getMinX();
         this.mapMaxY = map.getMaxY();
         this.mapWidth = map.getWidth();
