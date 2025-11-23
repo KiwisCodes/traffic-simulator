@@ -1,4 +1,4 @@
-Of course! Here is the provided text formatted as a clean and professional Markdown file, suitable for a `README.md` on GitHub.
+Here is the updated `README.md` with the file tree integrated into a new **Project Structure** section. I have adjusted the section numbering accordingly to keep the document logical.
 
 ---
 
@@ -41,7 +41,56 @@ This project is a Java-based application that connects to the SUMO (Simulation o
 - **API**: TraaS (`TraaS.jar`)
 - **Version Control**: Git & GitHub
 
-## 4. How to Run
+## 4. Project Structure
+
+The project follows a standard Maven directory structure, separating logic (Model), interface (View), and event handling (Controller).
+
+```text
+traffic-simulator
+├── README.md                  # Project overview and setup instructions
+├── lib
+│   └── TraaS.jar              # External Library: Traffic Control Interface (TraCI) as a Service
+├── pom.xml                    # Maven: Manages dependencies (JavaFX, JUnit, etc.)
+├── src
+│   ├── main
+│   │   ├── java
+│   │   │   ├── controller
+│   │   │   │   ├── MainController.java        # [UI LOGIC] Handles buttons, timers, and connects View to Model
+│   │   │   │   └── MapInteractionHandler.java # [UX] Handles Mouse Drag/Scroll on the map
+│   │   │   ├── model
+│   │   │   │   ├── ReportManager.java         # [IO] Exports stats to CSV/PDF
+│   │   │   │   ├── SimulationManager.java     # [CORE] Runs the thread, talks to SUMO
+│   │   │   │   ├── StatisticsManager.java     # [DATA] Calculates averages and counters
+│   │   │   │   ├── infrastructure
+│   │   │   │   │   ├── SumoMap.java           # [DATA] Holds static road network data
+│   │   │   │   │   ├── SumoTrafficlight.java  # [DATA] Holds traffic light state
+│   │   │   │   │   └── mapInSumo.txt          # Helper/Debug text for map data
+│   │   │   │   └── vehicles
+│   │   │   │       └── Vehicle.java           # [ENTITY] Base class for cars/buses
+│   │   │   ├── testjava
+│   │   │   │   └── TestSumo.java              # [TEST] Quick console test to verify TraCI connection
+│   │   │   ├── util
+│   │   │   │   └── CoordinateConverter.java   # [MATH] Converts meters to pixels
+│   │   │   └── view
+│   │   │       ├── MainGUI.java               # [ENTRY] public static main, loads FXML
+│   │   │       ├── Renderer.java              # [DRAWING] Draws shapes on the JavaFX Pane
+│   │   │       └── javafxApi.txt              # API notes (documentation)
+│   │   └── resources
+│   │       ├── frauasmap.net.xml              # SUMO Network (Roads/Junctions)
+│   │       ├── frauasmap.osm                  # OpenStreetMap source file
+│   │       ├── frauasmap.rou.xml              # SUMO Routes (Vehicle paths)
+│   │       ├── frauasmap.sumocfg              # SUMO Configuration (binds net+rou)
+│   │       ├── gui
+│   │       │   ├── MainView.fxml              # [LAYOUT] XML definition of the User Interface
+│   │       │   └── testDrawMap.fxml           # Testing layout
+│   │       ├── minimal.sumocfg                # Simplified config for testing
+│   │       └── trips.trips.xml                # Generated trips data
+│   └── test
+│       ├── java                               # Location for JUnit tests
+│       └── resources                          # Test-specific resources
+```
+
+## 5. How to Run
 
 ### Prerequisites
 
@@ -59,10 +108,10 @@ This project is a Java-based application that connects to the SUMO (Simulation o
     ```
 
 2.  **Start the SUMO Server:**
-    Open a terminal and run SUMO with a configuration file and the `--remote-port` argument. (You must provide your own `.sumocfg` file).
+    Open a terminal and run SUMO with a configuration file and the `--remote-port` argument. (You must provide your own `.sumocfg` file or use the one provided in `src/main/resources`).
     ```bash
-    # Example using a generic config file
-    sumo -c path/to/your/map.sumocfg --remote-port 9999
+    # Example using the provided config file
+    sumo -c src/main/resources/frauasmap.sumocfg --remote-port 9999
     ```
 
 3.  **Run the Java Application:**
@@ -86,7 +135,7 @@ This will create a file like `traffic-simulator-1.0-SNAPSHOT.jar` in the `target
 java -jar target/traffic-simulator-1.0-SNAPSHOT.jar
 ```
 
-## 5. Milestone Status
+## 6. Milestone Status
 
 - [x] **Milestone 1** (System Design & Prototype): Due 27.11.2025
 - [ ] **Milestone 2** (Functional Prototype): Due 14.12.2025
