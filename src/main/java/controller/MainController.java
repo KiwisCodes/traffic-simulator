@@ -8,18 +8,23 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.CheckBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
+import javafx.scene.transform.Scale;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 
 // Model & View Imports
 import model.SimulationManager;
 import model.infrastructure.SumoMap;
-import model.vehicles.SumoVehicle;
+import model.vehicles.Vehicle;
 import view.Renderer;
 import util.CoordinateConverter; // Ensure this is imported from your util/view package
 
@@ -30,12 +35,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 public class MainController {
+	
+	@FXML private HBox topHbox;
 
     // --- FXML View Elements ---
     @FXML private ScrollPane leftControlPanel;
-    @FXML private ScrollPane mapScrollPane;
+//    @FXML private ScrollPane mapScrollPane;
     @FXML private StackPane rootStackPane;
 
     // Simulation Control
@@ -93,6 +101,11 @@ public class MainController {
     @FXML private Button exportPdfButton;
 
     // Map & Log
+//    @FXML private AnchorPane rightMapAnchorPane;
+    @FXML private AnchorPane mapAnchorPane;
+    @FXML private StackPane rightMapStackPane;
+    @FXML private Group rightMapPaneGroup;
+    @FXML private Pane vehiclePane;
     @FXML private Pane baseMapPane;
     @FXML private Pane lanePane;     // Static roads go here
     @FXML private Pane junctionPane;
@@ -106,6 +119,7 @@ public class MainController {
     @FXML private Button zoomOutButton;
     @FXML private Button resetViewButton;
     @FXML private ToggleButton toggle3DButton;
+    @FXML private TitledPane bottomLogArea;
 
     // --- Logic & State ---
     private SimulationManager simManager;
@@ -128,6 +142,7 @@ public class MainController {
     // Map to track visual shapes: ID -> Shape (Used to update positions)
     private Map<String, Shape> vehicleVisuals = new HashMap<>();
     private Group mapContentGroup; // Container for zooming/panning
+    private MapInteractionHandler mapInteractionHandler;
 
     // Scaling constants
     private final double PADDING = 50.0;
@@ -154,14 +169,18 @@ public class MainController {
     @FXML
     public void initialize() {
         log("Controller initialized. Waiting to start...");
+        this.mapInteractionHandler = new MapInteractionHandler(rightMapStackPane, rightMapPaneGroup);
         
-//        // Prepare the Map Group for zooming/panning
-//        mapContentGroup = new Group();
-//        // Add panes in order (Bottom to Top)
-//        mapContentGroup.getChildren().addAll(baseMapPane, lanePane, junctionPane, routePane, carPane, busPane, truckPane, bikePane);
-//        
-//        rootStackPane.getChildren().clear();
-//        rootStackPane.getChildren().add(mapContentGroup);
+//        Rectangle clipRect = new Rectangle();
+//
+//        // 2. Bind the clip to the StackPane (which acts as the "Center" window)
+//        clipRect.widthProperty().bind(rightMapStackPane.widthProperty());
+//        clipRect.heightProperty().bind(rightMapStackPane.heightProperty());
+//
+//        // 3. Apply the clip
+//        rightMapStackPane.setClip(clipRect);
+        
+        
     }
 
     // --- ACTION METHODS ---
@@ -181,6 +200,29 @@ public class MainController {
             // Now that we are connected, we have map bounds. Setup converter.
             SumoMap sumoMap = this.simManager.getSumoMap();
             this.renderer.setConverter(sumoMap);
+            this.converter = this.renderer.getConverter();
+            
+            
+//         // 2. --- CRITICAL FIX --- 
+//            // Calculate the correct scale based on the View Pane's current size
+//            double availableWidth = rightMapStackPane.getWidth();
+//            double availableHeight = rightMapStackPane.getHeight();
+//            
+//            // Safety check: if width/height is 0 (scene not loaded yet), default to something reasonable
+//            if (availableWidth == 0) availableWidth = 800;
+//            if (availableHeight == 0) availableHeight = 600;
+//
+//            // Calculate scale inside the converter
+//            this.converter.autoFit(availableWidth, availableHeight);
+//            
+//         // --- DEBUG PRINT START ---
+//            System.out.println("--- MAP DEBUG INFO ---");
+//            System.out.println("Pane Size: " + availableWidth + " x " + availableHeight);
+//            System.out.println("Map Scale: " + this.converter.getScale());
+//            System.out.println("Map Offset: X=" + this.converter.toScreenX(0) + " Y=" + this.converter.toScreenY(0));
+            // --- DEBUG PRINT END ---
+            
+            
             //insde the renderer there is a converter, inside this converter there is the sumoMap info
             /*
              * The Lambda () -> { ... }: This is the code you want to run in the background. It's an anonymous function that defines the task.
@@ -188,12 +230,56 @@ public class MainController {
             //Draw just the lanes first
 	         // DRAW LANES (The code you need)
 	         // We ask the renderer to create the Group of lanes using the active connection
-	         Group lanesGroup = this.renderer.createLaneGroup(this.simManager.getConnection(), sumoMap);
+//	         Group lanesGroup = this.renderer.createLaneGroup(this.simManager.getConnection(), sumoMap);
+            
+         // Define the action (What happens when clicked?)
+            Consumer<String> laneClickHandler = (laneId) -> {
+                // Update your UI text fields
+                routeIdField.setText(laneId); 
+                stressEdgeField.setText(laneId);
+                filterEdgeField.setText(laneId);
+                log("User selected lane: " + laneId);
+            };
+            
+            /*
+A Consumer<String> is a Java concept (introduced in Java 8) that lets you pass a block of code as if it were a variable.
+
+Think of it as a "Task" or a "Job Order".
+
+
+
+The Data: It expects one input (in this case, a String, which is your Lane ID).
+
+The Result: It returns nothing (void). It just "consumes" the data and does something with it.
+             */
+
+            // Pass this action to the renderer
+            Group lanesGroup = this.renderer.createLaneGroup(
+                this.simManager.getConnection(), 
+                sumoMap, 
+                laneClickHandler // <--- Passing the function here
+            );
+	         
 	
 	         // 4. Add the lanes to the GUI Pane
 	         // We clear it first just in case, then add the new shapes
 	         this.lanePane.getChildren().clear();
 	         this.lanePane.getChildren().add(lanesGroup);
+	         
+	         centerAndFitMap();
+	         
+	         
+//	         Rectangle clipRect = new Rectangle();
+//	         clipRect.widthProperty().bind(rightMapStackPane.widthProperty());
+//	         clipRect.heightProperty().bind(rightMapStackPane.heightProperty());
+//	         rightMapStackPane.setClip(clipRect);
+	      // --- FIX 2: Force Z-Order (Safety measure) ---
+	         // This guarantees the sidebar is drawn last (on top)
+	         topHbox.toFront();
+	         leftControlPanel.toFront();
+//	         // If you have a log area at the bottom, bring that to front too
+	          bottomLogArea.toFront();
+	          
 	         
 	         //Center the map
 //	         Platform.runLater(() -> {
@@ -365,6 +451,49 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
         if (simManager != null) {
             simManager.stopSimulation();
         }
+    }
+    
+    
+    private void centerAndFitMap() {
+        Platform.runLater(() -> {
+            // 1. Get the actual size of the Map Content
+            var mapBounds = rightMapPaneGroup.getLayoutBounds();
+            double mapWidth = mapBounds.getWidth();
+            double mapHeight = mapBounds.getHeight();
+            
+            // 2. Get the size of the Window (StackPane)
+            double windowWidth = rightMapStackPane.getWidth();
+            double windowHeight = rightMapStackPane.getHeight();
+
+            if (windowWidth == 0 || windowHeight == 0) return;
+
+            // 3. Calculate Scale to FIT
+            double scaleX = windowWidth / mapWidth;
+            double scaleY = windowHeight / mapHeight;
+            
+            // Use the smaller scale so it fits entirely (with 90% padding)
+            double scaleFactor = Math.min(scaleX, scaleY) * 0.90;
+
+            // 4. Calculate the Center of the Map (This is your Pivot)
+            double pivotX = mapBounds.getMinX() + (mapWidth / 2);
+            double pivotY = mapBounds.getMinY() + (mapHeight / 2);
+
+            // 5. Create the Scale Transform with the Pivot
+            // Constructor: Scale(x, y, pivotX, pivotY)
+            Scale scaleTransform = new Scale(scaleFactor, scaleFactor, pivotX, pivotY);
+
+            // 6. Apply the Transform
+            rightMapPaneGroup.getTransforms().clear(); // Clear previous zooms
+            rightMapPaneGroup.getTransforms().add(scaleTransform);
+            
+            // 7. Reset Translations (Let StackPane handle the centering)
+            // Because the StackPane automatically centers its children, and we just 
+            // scaled the child around its own center, it should snap perfectly to the middle.
+            rightMapPaneGroup.setTranslateX(0);
+            rightMapPaneGroup.setTranslateY(0);
+
+            log("Map Centered. Scale: " + String.format("%.4f", scaleFactor));
+        });
     }
 
     // --- Placeholder Action Methods ---

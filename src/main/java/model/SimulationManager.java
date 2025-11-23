@@ -12,11 +12,11 @@ import java.util.Map;
 import it.polito.appeal.traci.*;
 import de.tudresden.sumo.cmd.*;
 // Import your vehicle classes
-import model.vehicles.SumoVehicle;
-import model.vehicles.Car;
-import model.vehicles.Bus;
-import model.vehicles.Truck;
-import model.vehicles.Bike;
+import model.vehicles.Vehicle;
+//import model.vehicles.Car;
+//import model.vehicles.Bus;
+//import model.vehicles.Truck;
+//import model.vehicles.Bike;
 
 // Import Infrastructure
 import model.infrastructure.SumoMap;
@@ -52,7 +52,7 @@ public class SimulationManager {
 
     // --- State Data (The "World") ---
     // 'volatile' ensures that changes to the reference are immediately visible to other threads
-    private volatile List<SumoVehicle> activeVehicles;
+    private volatile List<Vehicle> activeVehicles;
     private volatile Map<String, SumoTrafficlight> activeTrafficlights;
     
     // Sub-Managers & Infrastructure
@@ -238,7 +238,7 @@ public class SimulationManager {
      * The GUI can iterate over this list without crashing, even if the
      * simulation thread updates the "real" list in the background.
      */
-    public List<SumoVehicle> getActiveVehicles() {
+    public List<Vehicle> getActiveVehicles() {
         synchronized (stateLock) {
 /*
 Synchornize keyword

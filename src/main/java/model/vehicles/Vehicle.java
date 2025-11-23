@@ -2,7 +2,7 @@ package model.vehicles;
 
 import de.tudresden.ws.container.SumoPosition2D;
 
-public abstract class SumoVehicle {
+public class Vehicle {
     
     // Protected fields so subclasses can access if needed, or keep private with getters
     protected String id;
@@ -14,13 +14,13 @@ public abstract class SumoVehicle {
     // Static counter if you need to track total instances
     private static int numberOfVehicles = 0;
 
-    public SumoVehicle(String id) {
+    public Vehicle(String id) {
         this.id = id;
         numberOfVehicles++;
     }
 
     // Abstract method forces subclasses to define their type
-    public abstract String getVehicleType();
+//    public String getVehicleType();
 
     // --- Getters and Setters ---
     public String getId() { return id; }

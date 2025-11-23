@@ -81,22 +81,33 @@ public class CoordinateConverter {
      */
     
     //does not support default arguments
-    public void autoFitToWindow() {
-        double workableWidth = this.windowWidth - (padding * 2);
-        double workableHeight = this.windowHeight - (padding * 2);
+ // Update in util/CoordinateConverter.java
 
-        double scaleX = workableWidth / mapWidth;
-        double scaleY = workableHeight / mapHeight;
-
-        // Choose the smaller scale so the whole map fits
-        this.scale = Math.min(scaleX, scaleY);
-        
-        // Reset pan to center
-        this.offsetX = 0;
-        this.offsetY = 0;
-        
-        System.out.println("Auto-scaled map to: " + this.scale);
-    }
+ // Add this method to dynamically set the canvas size
+    public void autoFit(double paneWidth, double paneHeight) {
+	     // 1. Calculate the width/height of the SUMO map
+	     double mapW = this.mapWidth;
+	     double mapH = this.mapHeight;
+	
+	     // 2. Determine the scales required to fit width and height
+	     // We subtract padding * 2 to leave room on edges
+	     double scaleX = (paneWidth - (padding * 2)) / mapW;
+	     double scaleY = (paneHeight - (padding * 2)) / mapH;
+	
+	     // 3. Choose the smaller scale (so the whole map fits)
+	     this.scale = Math.min(scaleX, scaleY);
+	
+	     // 4. Center the map
+	     // Calculate how much space is left empty
+	     double usedWidth = mapW * scale;
+	     double usedHeight = mapH * scale;
+	
+	     // Center offset
+	     this.offsetX = (paneWidth - usedWidth) / 2;
+	     this.offsetY = (paneHeight - usedHeight) / 2;
+	     
+	     System.out.println("Map Scaled to: " + this.scale);
+    }	
 
     public void zoom(double factor) {
         this.scale *= factor;

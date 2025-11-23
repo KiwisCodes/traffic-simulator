@@ -28,13 +28,42 @@
 
 <AnchorPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.MainController">
    <children>
-      <BorderPane fx:id="borderPaneContainer" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="900.0" prefWidth="1400.0">
-      
-          <!-- LEFT Region -->
-          <left>
-              <ScrollPane fx:id="leftControlPanel" fitToWidth="true" hbarPolicy="NEVER" prefWidth="300.0" style="-fx-background-color: #f4f4f4; -fx-border-color: #cccccc; -fx-border-width: 0 1 0 0;">
+      <BorderPane fx:id="borderPaneContainer" prefWidth="1477.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <top>
+            <HBox fx:id="topHbox" prefHeight="27.0" prefWidth="1400.0" BorderPane.alignment="CENTER">
+               <children>
+                  <MenuBar prefHeight="28.0" prefWidth="300.0">
+                    <menus>
+                      <Menu mnemonicParsing="false" text="ExportPDF">
+                        <items>
+                          <MenuItem mnemonicParsing="false" text="Close" />
+                        </items>
+                      </Menu>
+                      <Menu mnemonicParsing="false" text="Export CSV">
+                        <items>
+                          <MenuItem mnemonicParsing="false" text="Delete" />
+                        </items>
+                      </Menu>
+                      <Menu mnemonicParsing="false" text="Need Help?">
+                        <items>
+                          <MenuItem mnemonicParsing="false" text="About" />
+                        </items>
+                      </Menu>
+                    </menus>
+                  </MenuBar>
+                  <Region HBox.hgrow="ALWAYS" />
+                  <Region prefHeight="200.0" prefWidth="200.0" HBox.hgrow="ALWAYS" />
+                  <Button fx:id="zoomInButton" mnemonicParsing="false" text="Zoom In (+)" />
+                  <Button fx:id="zoomOutButton" mnemonicParsing="false" text="Zoom Out (-)" />
+                  <Button fx:id="resetViewButton" mnemonicParsing="false" text="ResetView" />
+                  <ToggleButton fx:id="view3DToggleButton" mnemonicParsing="false" text="View 3D" />
+               </children>
+            </HBox>
+         </top>
+         <left>
+              <ScrollPane fx:id="leftControlPanel" fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: #f4f4f4; -fx-border-color: #cccccc; -fx-border-width: 0 1 0 0;" BorderPane.alignment="TOP_LEFT">
                   <content>
-                      <VBox prefWidth="280.0" spacing="10.0">
+                      <VBox spacing="10.0" style="-fx-background-color: #f4f4f4;">
                           <children>
                         <Label text="Simulation Interactions">
                            <font>
@@ -42,7 +71,7 @@
                            </font>
                         </Label>
                               
-                              <!-- Controls Accordion -->
+                                                <!-- Controls Accordion -->
                               <Accordion>
                                   <panes>
                                       <TitledPane animated="false" expanded="true" text="Simulation Control">
@@ -57,7 +86,7 @@
                                           </content>
                                       </TitledPane>
                                       
-                                      <TitledPane animated="false" text="Vehicle Actions">
+                                                        <TitledPane animated="false" text="Vehicle Actions">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -83,7 +112,7 @@
                                           </content>
                                       </TitledPane>
                                       
-                                      <TitledPane animated="false" text="Traffic Light Actions">
+                                                        <TitledPane animated="false" text="Traffic Light Actions">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -104,7 +133,7 @@
                                           </content>
                                       </TitledPane>
                                       
-                                      <TitledPane animated="false" text="Vehicle Filtering">
+                                                        <TitledPane animated="false" text="Vehicle Filtering">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -121,7 +150,7 @@
                                           </content>
                                       </TitledPane>
                                       
-                                      <TitledPane animated="false" text="Stress Testing">
+                                                        <TitledPane animated="false" text="Stress Testing">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -179,7 +208,7 @@
                            </content>
                         </TitledPane>
                               
-                              <!-- Stats -->
+                                                <!-- Stats -->
                               <Region VBox.vgrow="ALWAYS" />
                               <Label text="Live Statistics &amp; Data">
                                   <font>
@@ -243,81 +272,49 @@
                       </VBox>
                   </content>
               </ScrollPane>
-          </left>
-          
-          <!-- BOTTOM Region -->
-          <bottom>
-              <TitledPane fx:id="bottomLogArea" collapsible="true" expanded="true" text="Simulation Log" BorderPane.alignment="CENTER">
+         </left>
+         <bottom>
+              <TitledPane fx:id="bottomLogArea" alignment="CENTER" collapsible="true" expanded="true" text="Simulation Log" BorderPane.alignment="CENTER">
                   <content>
-                      <ScrollPane fx:id="bottomLog" prefHeight="100.0" prefWidth="200.0">
+                      <ScrollPane fx:id="bottomLog">
                           <content>
-                              <Label fx:id="logLabel" alignment="TOP_LEFT" prefHeight="100.0" prefWidth="1380.0" style="-fx-background-color: #ffffff;" wrapText="true" />
+                              <Label fx:id="logLabel" alignment="TOP_LEFT" style="-fx-background-color: #ffffff;" wrapText="true" />
                           </content>
                       </ScrollPane>
                   </content>
               </TitledPane>
-          </bottom>
-          
-          <!-- CENTER Region (Map) -->
-          <center>
-            <AnchorPane BorderPane.alignment="CENTER">
+         </bottom>
+         <right>
+            <StackPane BorderPane.alignment="CENTER">
                <children>
-                    <!-- fx:id added here -->
-                    <StackPane fx:id="rightMapArea">
-                        <children>
-                        <Group>
-                           <children>
-                              <Pane fx:id="baseMapPane" />
-                              
-                                                <!-- FIXED: fx:id="routePane" (was routePane1) -->
-                              <Pane fx:id="lanePane" pickOnBounds="false" />
-                              <Pane fx:id="junctionPane" pickOnBounds="false" />
-                              <Pane fx:id="routePane" />
-                              
-                                                <Pane fx:id="trafficLightPane" pickOnBounds="false" />
-                              <Pane fx:id="truckPane" pickOnBounds="false" />
-                              <Pane fx:id="busPane" pickOnBounds="false" />
-                              <!-- THIS IS WHERE CARS WILL BE DRAWN -->
-                              <Pane fx:id="carPane" pickOnBounds="false" />
-                              <Pane fx:id="bikePane" pickOnBounds="false" />
-                           </children>
-                        </Group>
-                        </children>
-                    </StackPane>
+                  <AnchorPane fx:id="rightMapAnchorPane" StackPane.alignment="TOP_RIGHT" />
                </children>
-            </AnchorPane>
-          </center>
-         <top>
-            <HBox prefHeight="27.0" prefWidth="1400.0" BorderPane.alignment="CENTER">
-               <children>
-                  <MenuBar prefHeight="28.0" prefWidth="300.0">
-                    <menus>
-                      <Menu mnemonicParsing="false" text="ExportPDF">
-                        <items>
-                          <MenuItem mnemonicParsing="false" text="Close" />
-                        </items>
-                      </Menu>
-                      <Menu mnemonicParsing="false" text="Export CSV">
-                        <items>
-                          <MenuItem mnemonicParsing="false" text="Delete" />
-                        </items>
-                      </Menu>
-                      <Menu mnemonicParsing="false" text="Need Help?">
-                        <items>
-                          <MenuItem mnemonicParsing="false" text="About" />
-                        </items>
-                      </Menu>
-                    </menus>
-                  </MenuBar>
-                  <Region prefHeight="200.0" prefWidth="200.0" HBox.hgrow="ALWAYS" />
-                  <Region prefHeight="200.0" prefWidth="200.0" HBox.hgrow="ALWAYS" />
-                  <Button fx:id="zoomInButton" mnemonicParsing="false" text="Zoom In (+)" />
-                  <Button fx:id="zoomOutButton" mnemonicParsing="false" text="Zoom Out (-)" />
-                  <Button fx:id="resetViewButton" mnemonicParsing="false" text="ResetView" />
-                  <ToggleButton fx:id="view3DToggleButton" mnemonicParsing="false" text="View 3D" />
-               </children>
-            </HBox>
-         </top>
+            </StackPane>
+         </right>
+         <center>
+              <!-- fx:id added here -->
+              <StackPane fx:id="rightMapStackPane" alignment="TOP_RIGHT" BorderPane.alignment="CENTER">
+                  <children>
+                  <AnchorPane fx:id="mapAnchorPane" StackPane.alignment="CENTER" />
+                  <Group fx:id="rightMapPaneGroup" StackPane.alignment="CENTER">
+                     <children>
+                        
+                                                                              <!-- FIXED: fx:id="routePane" (was routePane1) -->
+                        <Pane fx:id="lanePane" pickOnBounds="false" />
+                        <Pane fx:id="junctionPane" pickOnBounds="false" />
+                        <Pane fx:id="routePane" />
+                        
+                                                                        <Pane fx:id="trafficLightPane" pickOnBounds="false" />
+                        <Pane fx:id="vehiclePane" pickOnBounds="false" />
+                     </children>
+                  </Group>
+                  <Pane fx:id="busPane" pickOnBounds="false" />
+                  <!-- THIS IS WHERE CARS WILL BE DRAWN -->
+                  <Pane fx:id="carPane" pickOnBounds="false" />
+                  <Pane fx:id="bikePane" pickOnBounds="false" />
+                  </children>
+              </StackPane>
+         </center>
       </BorderPane>
    </children>
 </AnchorPane>
