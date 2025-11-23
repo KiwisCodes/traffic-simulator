@@ -1,7 +1,3 @@
-Here is the updated `README.md` with the file tree integrated into a new **Project Structure** section. I have adjusted the section numbering accordingly to keep the document logical.
-
----
-
 # Real-Time Traffic Simulation (OOP Java Project)
 *Winter 2025-2026 | Prof. Dr.-Eng. Ghadi Mahmoudi*
 
