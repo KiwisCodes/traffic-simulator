@@ -1,4 +1,4 @@
-package gui;
+package Controller;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -15,6 +15,7 @@ import java.util.ResourceBundle;
 import de.tudresden.sumo.cmd.Simulation;   // Để lấy thời gian
 import de.tudresden.sumo.cmd.Trafficlight; // Để điều khiển đèn
 import de.tudresden.sumo.objects.SumoStringList; // Để chứa danh sách ID
+import gui.MapRenderer;
 
 public class Controller implements Initializable {
 
