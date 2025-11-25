@@ -23,8 +23,8 @@ import javafx.scene.layout.Pane;
 
 // Model & View Imports
 import model.SimulationManager;
-import model.infrastructure.SumoMap;
-import model.vehicles.Vehicle;
+import model.infrastructure.MapManger;
+import model.vehicles.VehicleManager;
 import view.Renderer;
 import util.CoordinateConverter; // Ensure this is imported from your util/view package
 
@@ -198,7 +198,7 @@ public class MainController {
 
             // --- A. SETUP MAP ---
             // Now that we are connected, we have map bounds. Setup converter.
-            SumoMap sumoMap = this.simManager.getSumoMap();
+            MapManger sumoMap = this.simManager.getSumoMap();
             this.renderer.setConverter(sumoMap);
             this.converter = this.renderer.getConverter();
             
@@ -266,7 +266,7 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 	         this.lanePane.getChildren().clear();
 	         this.lanePane.getChildren().add(lanesGroup);
 	         
-	         centerAndFitMap();
+//	         centerAndFitMap();
 	         
 	         
 //	         Rectangle clipRect = new Rectangle();
@@ -307,10 +307,7 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
                         simManager.step(); 
                         
                         // 2. Throttle speed (e.g., 100ms per step)
-                        Thread.sleep(100); 
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break; 
+//                        Thread.sleep(100); 
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -321,17 +318,6 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
             threadPool.submit(() -> {
                 log("Stats Thread Started.");
                 while (isSimulationRunning) {
-                    try {
-                        // Calculate stats less frequently (every 1 second)
-                        Thread.sleep(1000);
-                        
-                        // Example: Log average speed
-                        // System.out.println("Avg Speed: " + simManager.getStatisticsManager().getAverageSpeed());
-                        
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
                 }
             });
 
@@ -453,48 +439,48 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
         }
     }
     
-    
-    private void centerAndFitMap() {
-        Platform.runLater(() -> {
-            // 1. Get the actual size of the Map Content
-            var mapBounds = rightMapPaneGroup.getLayoutBounds();
-            double mapWidth = mapBounds.getWidth();
-            double mapHeight = mapBounds.getHeight();
-            
-            // 2. Get the size of the Window (StackPane)
-            double windowWidth = rightMapStackPane.getWidth();
-            double windowHeight = rightMapStackPane.getHeight();
-
-            if (windowWidth == 0 || windowHeight == 0) return;
-
-            // 3. Calculate Scale to FIT
-            double scaleX = windowWidth / mapWidth;
-            double scaleY = windowHeight / mapHeight;
-            
-            // Use the smaller scale so it fits entirely (with 90% padding)
-            double scaleFactor = Math.min(scaleX, scaleY) * 0.90;
-
-            // 4. Calculate the Center of the Map (This is your Pivot)
-            double pivotX = mapBounds.getMinX() + (mapWidth / 2);
-            double pivotY = mapBounds.getMinY() + (mapHeight / 2);
-
-            // 5. Create the Scale Transform with the Pivot
-            // Constructor: Scale(x, y, pivotX, pivotY)
-            Scale scaleTransform = new Scale(scaleFactor, scaleFactor, pivotX, pivotY);
-
-            // 6. Apply the Transform
-            rightMapPaneGroup.getTransforms().clear(); // Clear previous zooms
-            rightMapPaneGroup.getTransforms().add(scaleTransform);
-            
-            // 7. Reset Translations (Let StackPane handle the centering)
-            // Because the StackPane automatically centers its children, and we just 
-            // scaled the child around its own center, it should snap perfectly to the middle.
-            rightMapPaneGroup.setTranslateX(0);
-            rightMapPaneGroup.setTranslateY(0);
-
-            log("Map Centered. Scale: " + String.format("%.4f", scaleFactor));
-        });
-    }
+    //this function does not work
+//    private void centerAndFitMap() {
+//        Platform.runLater(() -> {
+//            // 1. Get the actual size of the Map Content
+//            var mapBounds = rightMapPaneGroup.getLayoutBounds();
+//            double mapWidth = mapBounds.getWidth();
+//            double mapHeight = mapBounds.getHeight();
+//            
+//            // 2. Get the size of the Window (StackPane)
+//            double windowWidth = rightMapStackPane.getWidth();
+//            double windowHeight = rightMapStackPane.getHeight();
+//
+//            if (windowWidth == 0 || windowHeight == 0) return;
+//
+//            // 3. Calculate Scale to FIT
+//            double scaleX = windowWidth / mapWidth;
+//            double scaleY = windowHeight / mapHeight;
+//            
+//            // Use the smaller scale so it fits entirely (with 90% padding)
+//            double scaleFactor = Math.min(scaleX, scaleY) * 0.90;
+//
+//            // 4. Calculate the Center of the Map (This is your Pivot)
+//            double pivotX = mapBounds.getMinX() + (mapWidth / 2);
+//            double pivotY = mapBounds.getMinY() + (mapHeight / 2);
+//
+//            // 5. Create the Scale Transform with the Pivot
+//            // Constructor: Scale(x, y, pivotX, pivotY)
+//            Scale scaleTransform = new Scale(scaleFactor, scaleFactor, pivotX, pivotY);
+//
+//            // 6. Apply the Transform
+//            rightMapPaneGroup.getTransforms().clear(); // Clear previous zooms
+//            rightMapPaneGroup.getTransforms().add(scaleTransform);
+//            
+//            // 7. Reset Translations (Let StackPane handle the centering)
+//            // Because the StackPane automatically centers its children, and we just 
+//            // scaled the child around its own center, it should snap perfectly to the middle.
+//            rightMapPaneGroup.setTranslateX(0);
+//            rightMapPaneGroup.setTranslateY(0);
+//
+//            log("Map Centered. Scale: " + String.format("%.4f", scaleFactor));
+//        });
+//    }
 
     // --- Placeholder Action Methods ---
     @FXML private void pauseSimulation() {

@@ -22,7 +22,7 @@ public class MainGUI extends Application {
 	public static int windowWidth = 1400;
 	public static int windowHeight = 900;
 	
-	@FXML private static BorderPane borderPaneContainer;
+	    @FXML private static BorderPane borderPaneContainer;
 	    @FXML private static HBox simulationHeader;
 	    @FXML private static TitledPane bottomLogArea;
 

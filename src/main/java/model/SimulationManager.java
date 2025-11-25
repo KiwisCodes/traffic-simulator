@@ -59,6 +59,8 @@ public class SimulationManager {
     private StatisticsManager statisticsManager;
     private ReportManager reportManager;
     private MapManger sumoMap; // Holds static map data (Lanes, Edges)
+    private VehicleManager vehicleManager;
+    private TrafficlightManager trafficlightManager;
     
     private volatile int currentStep = 0;
     private volatile boolean isRunning = false;

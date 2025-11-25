@@ -1,13 +1,13 @@
-model/vehicles/Vehicle.class
+model/vehicles/VehicleManager.class
 view/Renderer.class
 controller/MainController$1.class
-model/infrastructure/SumoTrafficlight.class
 view/MainGUI.class
 util/CoordinateConverter.class
 controller/MapInteractionHandler.class
 model/StatisticsManager.class
 testjava/TestSumo.class
+model/infrastructure/MapManger.class
 model/SimulationManager.class
 model/ReportManager.class
 controller/MainController.class
-model/infrastructure/SumoMap.class
+model/infrastructure/TrafficlightManager.class

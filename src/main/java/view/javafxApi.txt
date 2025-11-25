@@ -94,3 +94,25 @@ Logic: We multiply the normalized coordinate by a factor.
 Example: If scale = 5.0, then 1 meter becomes 5 pixels.
 
 Order of Operations: You must subtract the offset (sumoX - minX) before you multiply by the scale. If you scale first, your map will fly off the screen because you are multiplying the huge 5000 coordinate by 5.
+
+
+
+
+
+
+
+Map M<String, List<speed position>>
+
+draw(list<string>, map<string, list<int>>, pane)
+
+
+
+
+
+
+
+
+
+
+
+

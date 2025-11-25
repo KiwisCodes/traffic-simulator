@@ -74,7 +74,7 @@
                                                 <!-- Controls Accordion -->
                               <Accordion>
                                   <panes>
-                                      <TitledPane animated="false" expanded="true" text="Simulation Control">
+                                      <TitledPane expanded="true" text="Simulation Control">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -86,7 +86,7 @@
                                           </content>
                                       </TitledPane>
                                       
-                                                        <TitledPane animated="false" text="Vehicle Actions">
+                                                        <TitledPane text="Vehicle Actions">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -112,7 +112,7 @@
                                           </content>
                                       </TitledPane>
                                       
-                                                        <TitledPane animated="false" text="Traffic Light Actions">
+                                                        <TitledPane text="Traffic Light Actions">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -133,7 +133,7 @@
                                           </content>
                                       </TitledPane>
                                       
-                                                        <TitledPane animated="false" text="Vehicle Filtering">
+                                                        <TitledPane text="Vehicle Filtering">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -150,7 +150,7 @@
                                           </content>
                                       </TitledPane>
                                       
-                                                        <TitledPane animated="false" text="Stress Testing">
+                                                        <TitledPane text="Stress Testing">
                                           <content>
                                               <VBox spacing="5.0">
                                                   <children>
@@ -171,7 +171,7 @@
                               <Font name="System Bold" size="16.0" />
                            </font>
                         </Label>
-                        <TitledPane animated="false" text="Sumo-GUI">
+                        <TitledPane text="Sumo-GUI">
                            <content>
                               <VBox prefHeight="171.0" prefWidth="261.0">
                                  <children>
@@ -215,7 +215,7 @@
                                       <Font name="System Bold" size="16.0" />
                                   </font>
                               </Label>
-                              <TitledPane animated="false" expanded="true" text="Live Statistics">
+                              <TitledPane expanded="true" text="Live Statistics">
                                   <content>
                                       <VBox spacing="5.0">
                                           <children>
@@ -254,7 +254,7 @@
                                       </VBox>
                                   </content>
                               </TitledPane>
-                              <TitledPane animated="false" text="Data Export">
+                              <TitledPane text="Data Export">
                                   <content>
                                       <VBox spacing="5.0">
                                           <children>

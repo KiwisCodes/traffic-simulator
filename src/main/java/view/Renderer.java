@@ -19,7 +19,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.shape.StrokeLineJoin;
-import model.infrastructure.SumoMap;
+import model.infrastructure.MapManger;
 import model.vehicles.*;
 import util.CoordinateConverter;
 
@@ -40,7 +40,7 @@ public class Renderer {
         HOVER_GLOW.setBlurType(BlurType.GAUSSIAN);
     }
     
-    public void setConverter(SumoMap sumoMap) {
+    public void setConverter(MapManger sumoMap) {
         this.converter.setBound(sumoMap);
     }
     
@@ -48,7 +48,7 @@ public class Renderer {
         return this.converter;
     }
 
-    
+    //implement later
 //    public Shape createVehicleShape(SumoTraciConnection sumoConnection, Vehicle vehicle) {
 //        if (vehicle instanceof Car) {
 //            return new Circle(4, Color.BLUE);
@@ -66,7 +66,7 @@ public class Renderer {
     /**
      * [UPDATED] Now accepts a 'Consumer' callback to handle clicks
      */
-    public Group createLaneGroup(SumoTraciConnection sumoConnection, SumoMap sumoMap, Consumer<String> onLaneClick) {
+    public Group createLaneGroup(SumoTraciConnection sumoConnection, MapManger sumoMap, Consumer<String> onLaneClick) {
         List<String> edges =  sumoMap.getEdgeIds();
         Group laneGroup =  new Group();
         
