@@ -37,6 +37,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+import data.SimulationQueue;
+
 public class MainController {
 	
 	@FXML private HBox topHbox;
@@ -143,6 +145,7 @@ public class MainController {
     private Map<String, Shape> vehicleVisuals = new HashMap<>();
     private Group mapContentGroup; // Container for zooming/panning
     private MapInteractionHandler mapInteractionHandler;
+    private SimulationQueue queue;
 
     // Scaling constants
     private final double PADDING = 50.0;
@@ -151,7 +154,8 @@ public class MainController {
 
     public MainController() {
         // 1. Initialize Model
-        this.simManager = new SimulationManager(); // Logic Engine
+    	this.queue = new SimulationQueue(1000);
+        this.simManager = new SimulationManager(queue); // Logic Engine
         
         // 2. Initialize View Helpers
         this.converter = new CoordinateConverter(); // Math Helper
@@ -198,8 +202,8 @@ public class MainController {
 
             // --- A. SETUP MAP ---
             // Now that we are connected, we have map bounds. Setup converter.
-            MapManger sumoMap = this.simManager.getSumoMap();
-            this.renderer.setConverter(sumoMap);
+            MapManger mapManager = this.simManager.getMapManager();
+            this.renderer.setConverter(mapManager);
             this.converter = this.renderer.getConverter();
             
             
@@ -256,7 +260,7 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
             // Pass this action to the renderer
             Group lanesGroup = this.renderer.createLaneGroup(
                 this.simManager.getConnection(), 
-                sumoMap, 
+                mapManager, 
                 laneClickHandler // <--- Passing the function here
             );
 	         
@@ -345,7 +349,9 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 Why it's special: Code running inside handle() is executed on the JavaFX Application Thread. 
 This is the only thread allowed to modify UI elements (like moving a Circle or changing a Label text).
             	 */
-                updateView();
+            	
+//                updateView();
+            	
             }
         };
         uiLoop.start();
@@ -355,7 +361,7 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
      * Updates the visual elements based on the latest Model snapshot.
      */
     private void updateView() {
-    	
+    		
     	
         // 1. Get Thread-Safe Snapshot (No manual synchronized needed here!)
 //        var vehicles = simManager.getActiveVehicles();

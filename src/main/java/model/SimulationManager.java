@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import data.SimulationQueue;
+import model.infrastructure.*;
 import it.polito.appeal.traci.*;
 import de.tudresden.sumo.cmd.*;
 // Import your vehicle classes
@@ -21,6 +23,7 @@ import model.vehicles.VehicleManager;
 // Import Infrastructure
 import model.infrastructure.MapManger;
 import model.infrastructure.TrafficlightManager;
+import data.*;
 
 /**
  * The Core Logic Engine of the Application.
@@ -52,26 +55,30 @@ public class SimulationManager {
 
     // --- State Data (The "World") ---
     // 'volatile' ensures that changes to the reference are immediately visible to other threads
-    private volatile List<VehicleManager> activeVehicles;
-    private volatile Map<String, TrafficlightManager> activeTrafficlights;
+    private	Map<String, Map<String, String>> listOfEdges;
+	private	Map<String, Map<String, Object>> listOfVehicles;
+	private List<String> listOfTrafficlightIds;
+	private	Map<String, Map<String, String>> listOfLanes;
+	private	Map<String, Map<String, String>> listOfJunctions;
     
     // Sub-Managers & Infrastructure
     private StatisticsManager statisticsManager;
     private ReportManager reportManager;
-    private MapManger sumoMap; // Holds static map data (Lanes, Edges)
+    private MapManger mapManager; // Holds static map data (Lanes, Edges)
     private VehicleManager vehicleManager;
     private TrafficlightManager trafficlightManager;
     
-    private volatile int currentStep = 0;
-    private volatile boolean isRunning = false;
+    private SimulationQueue queue;
+	private static int routeCounter = 0;
+	public boolean isRunning = false;
 
     // --- Constructor ---
-    public SimulationManager() {
-        this.activeVehicles = new ArrayList<>();
-        this.activeTrafficlights = new HashMap<>();
-        this.statisticsManager = new StatisticsManager();
-        this.reportManager = new ReportManager();
-        // sumoMap will be initialized after connection
+    public SimulationManager(SimulationQueue queue) {
+    	this.sumoConnection = new SumoTraciConnection(sumoPath, sumoConfigFileName);
+		this.mapManager = new MapManger(sumoConnection);
+		this.vehicleManager = new VehicleManager(sumoConnection);
+		this.trafficlightManager = new TrafficlightManager(sumoConnection);
+		this.queue = queue;
     }
 
     // ====================================================================
@@ -100,8 +107,8 @@ public class SimulationManager {
             this.sumoConnection.runServer(); // Starts the SUMO process
             
             // Load Static Map Data (Edges/Bounds) immediately after connecting
-            this.sumoMap = new MapManger(sumoConnection);
-            // You would call methods here to populate sumoMap using TraCI calls:
+            this.mapManager = new MapManger(sumoConnection);
+            // You would call methods here to populate mapManager using TraCI calls:
             // loadStaticMapData(); (Implementation logic from previous chat)
             
             System.out.println("✅ Connection established!");
@@ -178,16 +185,16 @@ public class SimulationManager {
             // We lock only for the split-second it takes to swap the reference.
             synchronized (stateLock) {
 //                this.activeVehicles = nextStepVehicles; // Atomic reference swap
-                this.currentStep++;
+//                this.currentStep++;
                 
 //                 Update stats safely while we hold the lock
-                if (statisticsManager != null) {
-                    statisticsManager.updateStatistics(0, activeVehicles.size());
-                }
+//                if (statisticsManager != null) {
+//                    statisticsManager.updateStatistics(0, activeVehicles.size());
+//                }
             }
             
         } catch (Exception e) {
-            System.err.println("❌ Error during timestep " + currentStep);
+//            System.err.println("❌ Error during timestep " + currentStep);
             e.printStackTrace();
             stopSimulation(); 
         }
@@ -240,41 +247,41 @@ public class SimulationManager {
      * The GUI can iterate over this list without crashing, even if the
      * simulation thread updates the "real" list in the background.
      */
-    public List<VehicleManager> getActiveVehicles() {
-        synchronized (stateLock) {
-/*
-Synchornize keyword
-synchronized (The Lock)
-
-What it does: It creates a mutex (mutual exclusion). Only one thread can execute a block of code protected by the same lock at a time.
-
-Analogy: A bathroom with a key. If Thread A is inside, Thread B must wait outside until A leaves.
-
-Use case: When you need to perform multiple operations that must happen together (atomic), 
-like clearing a list and adding new items. 
-If you don't lock, another thread might see the list empty in the middle of your update.
- */
-            if (activeVehicles == null) {
-                return new ArrayList<>();
-            }
-            // Return a COPY (Snapshot)
-            return new ArrayList<>(activeVehicles);
-        }
-        /*
-
-1. The Relationship between List and ArrayList
-
-List (The Interface): Think of List as a contract or a menu. 
-It defines what you can do (add, remove, get item at index),
-but it doesn't say how the data is stored in memory. It's an abstract concept.
-
-ArrayList (The Implementation): This is a specific class that fulfills the List contract. 
-It stores data in a resizing array. It says, "I am a List, and I work by using an array internally."
-
-The Rule: Since ArrayList implements List, an ArrayList IS-A List. 
-Therefore, any method that promises to return a List can legally return an ArrayList, a LinkedList, or any other list type.
-         */
-    }
+//    public List<VehicleManager> getActiveVehicles() {
+//        synchronized (stateLock) {
+///*
+//Synchornize keyword
+//synchronized (The Lock)
+//
+//What it does: It creates a mutex (mutual exclusion). Only one thread can execute a block of code protected by the same lock at a time.
+//
+//Analogy: A bathroom with a key. If Thread A is inside, Thread B must wait outside until A leaves.
+//
+//Use case: When you need to perform multiple operations that must happen together (atomic), 
+//like clearing a list and adding new items. 
+//If you don't lock, another thread might see the list empty in the middle of your update.
+// */
+//            if (activeVehicles == null) {
+//                return new ArrayList<>();
+//            }
+//            // Return a COPY (Snapshot)
+//            return new ArrayList<>(activeVehicles);
+//        }
+//        /*
+//
+//1. The Relationship between List and ArrayList
+//
+//List (The Interface): Think of List as a contract or a menu. 
+//It defines what you can do (add, remove, get item at index),
+//but it doesn't say how the data is stored in memory. It's an abstract concept.
+//
+//ArrayList (The Implementation): This is a specific class that fulfills the List contract. 
+//It stores data in a resizing array. It says, "I am a List, and I work by using an array internally."
+//
+//The Rule: Since ArrayList implements List, an ArrayList IS-A List. 
+//Therefore, any method that promises to return a List can legally return an ArrayList, a LinkedList, or any other list type.
+//         */
+//    }
 
     
 //Change the below for traffic lights
@@ -293,7 +300,7 @@ Therefore, any method that promises to return a List can legally return an Array
 
     public StatisticsManager getStatisticsManager() { return statisticsManager; }
     public ReportManager getReportManager() { return reportManager; }
-    public int getCurrentStep() { return currentStep; } // Volatile makes this safe
+//    public int getCurrentStep() { return currentStep; } // Volatile makes this safe
     public SumoTraciConnection getConnection() { return sumoConnection; }
-    public MapManger getSumoMap() { return sumoMap; }
+    public MapManger getMapManager() { return mapManager; }
 }
