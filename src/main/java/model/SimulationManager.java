@@ -37,7 +37,7 @@ public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
-    private String sumoPath = "/Users/apple/sumo/bin/sumo"; 
+    private String sumoPath = "/Users/duongquytrang/sumo/bin/sumo"; 
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
@@ -303,4 +303,7 @@ public class SimulationManager {
 //    public int getCurrentStep() { return currentStep; } // Volatile makes this safe
     public SumoTraciConnection getConnection() { return sumoConnection; }
     public MapManger getMapManager() { return mapManager; }
+    public VehicleManager getVehicleManager() {
+    	return this.vehicleManager;
+    }
 }

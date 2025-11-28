@@ -4,10 +4,12 @@ controller/MainController$1.class
 view/MainGUI.class
 util/CoordinateConverter.class
 controller/MapInteractionHandler.class
+data/SimulationState.class
+testjava/TestSimulationThreads.class
 model/StatisticsManager.class
-testjava/TestSumo.class
 model/infrastructure/MapManger.class
 model/SimulationManager.class
+data/SimulationQueue.class
 model/ReportManager.class
 controller/MainController.class
 model/infrastructure/TrafficlightManager.class

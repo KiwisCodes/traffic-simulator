@@ -37,12 +37,14 @@ public class VehicleManager {
 				SumoStringList idList = (SumoStringList) response;
 				
 				this.vehiclesIds = idList;
+//				System.out.println("yes vehicle id list"); delete this log later
 				
 			}
 			this.updateVehiclesInfo();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		//delete this later
 	}
 	
 	public void updateVehiclesInfo() {

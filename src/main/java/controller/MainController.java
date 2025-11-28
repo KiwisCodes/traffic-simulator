@@ -20,6 +20,7 @@ import javafx.scene.transform.Scale;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.geometry.Pos; // import để căn giữa map
 
 // Model & View Imports
 import model.SimulationManager;
@@ -36,6 +37,17 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+
+//--- PHẦN TẠO DỮ LIỆU GIẢ (MOCK DATA) ---
+// Import các thư viện này
+import de.tudresden.sumo.objects.SumoColor;
+import java.util.HashMap;
+import de.tudresden.ws.container.SumoPosition2D; // Sửa lỗi SumoPosition2D
+import de.tudresden.sumo.objects.SumoColor;     // Sửa lỗi SumoColor (chắc chắn bạn sẽ bị tiếp theo)
+
+// Thêm để vẽ xe chuyển 
+import javafx.animation.AnimationTimer;
+import data.SimulationState;
 
 import data.SimulationQueue;
 
@@ -108,9 +120,13 @@ public class MainController {
     @FXML private StackPane rightMapStackPane;
     @FXML private Group rightMapPaneGroup;
     @FXML private Pane vehiclePane;
+ // --- THÊM DÒNG NÀY ---
+    private MapManger mapManager; // Biến toàn cục để dùng ở mọi nơi
+    // ---------------------
     @FXML private Pane baseMapPane;
     @FXML private Pane lanePane;     // Static roads go here
     @FXML private Pane junctionPane;
+    @FXML private Pane trafficLightPane; // add vào để vẽ đèn giao thông
     @FXML private Pane routePane;
     @FXML private Pane carPane;      // Dynamic cars go here
     @FXML private Pane busPane;
@@ -122,11 +138,14 @@ public class MainController {
     @FXML private Button resetViewButton;
     @FXML private ToggleButton toggle3DButton;
     @FXML private TitledPane bottomLogArea;
+    
+   
 
     // --- Logic & State ---
     private SimulationManager simManager;
     private Renderer renderer; 
     private CoordinateConverter converter;
+    
     
     // --- THREAD MANAGEMENT ---
     // 1. UI Thread: Handled by JavaFX & AnimationTimer
@@ -150,6 +169,7 @@ public class MainController {
     // Scaling constants
     private final double PADDING = 50.0;
     
+    
     // --- Initialization ---
 
     public MainController() {
@@ -172,9 +192,11 @@ public class MainController {
 
     @FXML
     public void initialize() {
+    	
         log("Controller initialized. Waiting to start...");
         this.mapInteractionHandler = new MapInteractionHandler(rightMapStackPane, rightMapPaneGroup);
         
+ 
 //        Rectangle clipRect = new Rectangle();
 //
 //        // 2. Bind the clip to the StackPane (which acts as the "Center" window)
@@ -191,6 +213,8 @@ public class MainController {
 
     @FXML 
     private void startSimulation() {
+    	
+    	
         // 1. Connect to SUMO (Blocking Call - runs on UI thread currently, 
         //    but acceptable for startup. Ideally, use Task<> for this too).
         log("Attempting to connect to SUMO...");
@@ -202,8 +226,8 @@ public class MainController {
 
             // --- A. SETUP MAP ---
             // Now that we are connected, we have map bounds. Setup converter.
-            MapManger mapManager = this.simManager.getMapManager();
-            this.renderer.setConverter(mapManager);
+            this.mapManager = this.simManager.getMapManager(); // ✅ ĐÚNG: Lưu vào biến toàn cục 
+            this.renderer.setConverter(this.mapManager); // Mới
             this.converter = this.renderer.getConverter();
             
             
@@ -242,7 +266,8 @@ public class MainController {
                 routeIdField.setText(laneId); 
                 stressEdgeField.setText(laneId);
                 filterEdgeField.setText(laneId);
-                log("User selected lane: " + laneId);
+                log("User selected lane: " + laneId); 
+                // Các lệnh setText này đều chỉ chạy khi lệnh accept() trong Renderer.java được kích hoạt.
             };
             
             /*
@@ -259,16 +284,43 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 
             // Pass this action to the renderer
             Group lanesGroup = this.renderer.createLaneGroup(
-                this.simManager.getConnection(), 
                 mapManager, 
+                this.simManager.getConnection(),
                 laneClickHandler // <--- Passing the function here
             );
 	         
 	
 	         // 4. Add the lanes to the GUI Pane
 	         // We clear it first just in case, then add the new shapes
-	         this.lanePane.getChildren().clear();
-	         this.lanePane.getChildren().add(lanesGroup);
+	         try {
+				this.lanePane.getChildren().clear();
+				 this.lanePane.getChildren().add(lanesGroup);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	         
+	      // A. Tạo hành động: Khi click vào đèn thì làm gì?
+	         Consumer<String> trafficLightClickHandler = (tlId) -> {
+	             // Điền ID vào ô nhập liệu "trafficLightIdField" trên giao diện
+	             trafficLightIdField.setText(tlId);
+	             log("Đã chọn đèn giao thông: " + tlId);
+	         };
+
+	         // B. Gọi Renderer vẽ nhóm đèn
+	         Group tlGroup = this.renderer.createTrafficLightGroup(
+	             this.simManager.getConnection(), 
+	             trafficLightClickHandler // Truyền hành động vào
+	         );
+
+	         // C. Đưa lên màn hình (trafficLightPane đã có sẵn trong FXML của bạn)
+	         this.trafficLightPane.getChildren().clear();
+	         this.trafficLightPane.getChildren().add(tlGroup);
+	         
+	         log("Đã vẽ xong " + tlGroup.getChildren().size() + " đèn giao thông.");
+	         // ------------------------------------------
+	         
+	         // ...
 	         
 //	         centerAndFitMap();
 	         
@@ -332,6 +384,8 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
         } else {
             log("Failed to connect to SUMO.");
         }
+        
+        //startUiLoop();
     }
     
     /**
@@ -350,74 +404,47 @@ Why it's special: Code running inside handle() is executed on the JavaFX Applica
 This is the only thread allowed to modify UI elements (like moving a Circle or changing a Label text).
             	 */
             	
-//                updateView();
+                updateView();
             	
             }
         };
         uiLoop.start();
+        log("Đã khởi động Animation Loop.");
     }
 
     /**
      * Updates the visual elements based on the latest Model snapshot.
      */
     private void updateView() {
-    		
-    	
-        // 1. Get Thread-Safe Snapshot (No manual synchronized needed here!)
-//        var vehicles = simManager.getActiveVehicles();
-//        int step = simManager.getCurrentStep();
-//        
-//        // 2. Update Labels
-//        simStepLabel.setText(String.valueOf(step));
-//        vehicleCountLabel.setText(String.valueOf(vehicles.size()));
+    	System.out.println("UpdateView đang chạy...");
+        // --- CÁCH CŨ (Đang chờ đồng đội) ---
+        /* if (simQueue == null) return;
+        SimulationState state = simQueue.pollState();
+        if (state != null) {
+             this.renderer.renderVehicles(this.vehiclePane, state.getVehicles());
+        }
+        */
+
+        // --- CÁCH MỚI (TEST RENDERER) ---
         
-        // 3. Update Dynamic Vehicle Shapes
-//        updateVehicleShapes(vehicles);
+        // 1. Tự sinh dữ liệu giả
+//        Map<String, Map<String, Object>> fakeData = generateFakeVehicleData();
+//    	this.simManager.getVehicleManager().step();
+//    	this.simManager.getVehicleManager().updateVehiclesInfo();
+//    	Map<String, Map<String, Object>> realData = this.simManager.getVehicleManager().getVehiclesData();
+
+        // 2. Gọi Renderer vẽ ngay lập tức
+        this.renderer.renderVehicles(this.vehiclePane, realData);
+        
+        // (Tùy chọn) In ra console để biết nó đang chạy
+        // System.out.println("Đang vẽ frame giả thứ: " + dummyStep);
     }
-    
-//    private void updateVehicleShapes(List<SumoVehicle> vehicles) {
-//        // List of IDs present in this snapshot
-//        List<String> currentIds = new ArrayList<>();
-//
-//        for (SumoVehicle v : vehicles) {
-//            currentIds.add(v.getId());
-//
-//            // A. Create Shape if new
-//            if (!vehicleVisuals.containsKey(v.getId())) {
-//                // Note: createVehicleShape only needs the data object, not the connection
-//                Shape s = renderer.createVehicleShape(null, v); // Connection not needed for simple shape logic
-//                vehicleVisuals.put(v.getId(), s);
-//                carPane.getChildren().add(s); // Add to pane
-//            }
-//
-//            // B. Move Shape
-//            Shape s = vehicleVisuals.get(v.getId());
-//            if (v.getPosition() != null) {
-//                // Convert Logic Coordinates -> Screen Coordinates
-//                double screenX = converter.transformX(v.getPosition().x);
-//                double screenY = converter.transformY(v.getPosition().y);
-//                
-//                s.setLayoutX(screenX);
-//                s.setLayoutY(screenY);
-//                // s.setRotate(v.getAngle()); // Optional rotation
-//            }
-//        }
-//
-//        // C. Cleanup (Remove shapes for vehicles that left)
-//        // We iterate via copy to avoid concurrent mod exception on the visuals map
-//        new ArrayList<>(vehicleVisuals.keySet()).forEach(id -> {
-//            if (!currentIds.contains(id)) {
-//                Shape s = vehicleVisuals.remove(id);
-//                carPane.getChildren().remove(s);
-//            }
-//        });
-//    }
     
     // --- HELPER: Logging ---
     private void log(String message) {
         System.out.println(message);
         if (logLabel != null) {
-            // Ensure UI update happens on UI thread (important if called from background threads)
+            // Ensure UI u	pdate happens on UI thread (important if called from background threads)
             Platform.runLater(() -> logLabel.setText(message + "\n" + logLabel.getText()));
         }
     }
@@ -444,6 +471,59 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
             simManager.stopSimulation();
         }
     }
+    
+    private long dummyStep = 0; // Biến đếm để tạo chuyển động
+
+    private Map<String, Map<String, Object>> generateFakeVehicleData() {
+        Map<String, Map<String, Object>> allVehicles = new HashMap<>();
+        
+        double baseX = 0;
+        double baseY = 0;
+
+        // 1. [QUAN TRỌNG] Lấy tọa độ gốc của bản đồ thật
+        if (this.mapManager != null) {
+            baseX = this.mapManager.getMinX();
+            baseY = this.mapManager.getMinY();
+            // System.out.println("Gốc bản đồ thật tại: " + baseX + ", " + baseY);
+        }
+
+        // --- XE 1 (Đỏ) ---
+        Map<String, Object> car1 = new HashMap<>();
+        
+        // 2. CỘNG BASEX VÀO ĐỂ XE NHẢY VÀO TRONG MAP
+        double x1 = baseX + 100 + (dummyStep * 5) % 1000; 
+        double y1 = baseY + 200; 
+        
+        SumoPosition2D pos1 = new SumoPosition2D();
+        pos1.x = x1;
+        pos1.y = y1;
+        
+        car1.put("Position", pos1);
+        car1.put("Color", new SumoColor(255, 0, 0, 255)); 
+        car1.put("Angle", 90.0);
+        
+        allVehicles.put("fake_car_red", car1);
+
+        // --- XE 2 (Xanh) ---
+        Map<String, Object> car2 = new HashMap<>();
+        double x2 = baseX + 500;
+        double y2 = baseY + 100 + (dummyStep * 5) % 800;
+        
+        SumoPosition2D pos2 = new SumoPosition2D();
+        pos2.x = x2;
+        pos2.y = y2;
+        
+        car2.put("Position", pos2);
+        car2.put("Color", new SumoColor(0, 255, 0, 255));
+        car2.put("Angle", 180.0);
+        
+        allVehicles.put("fake_car_green", car2);
+        
+        dummyStep++;
+        return allVehicles;
+    }
+    
+    
     
     //this function does not work
 //    private void centerAndFitMap() {
@@ -499,4 +579,8 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     @FXML private void applyFilter() {}
     @FXML private void clearFilter() {}
     @FXML private void runStressTest() {}
+    
+    
+    
+    
 }
