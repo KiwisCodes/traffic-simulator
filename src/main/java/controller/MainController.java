@@ -205,37 +205,8 @@ public class MainController {
             MapManager mapManager = this.simManager.getMapManager();
             this.renderer.setConverter(mapManager);
             this.converter = this.renderer.getConverter();
-            this.mapInteractionHandler.centerMap();
+//            this.mapInteractionHandler.centerMap(this.lanePane);
             
-            
-//         // 2. --- CRITICAL FIX --- 
-//            // Calculate the correct scale based on the View Pane's current size
-//            double availableWidth = rightMapStackPane.getWidth();
-//            double availableHeight = rightMapStackPane.getHeight();
-//            
-//            // Safety check: if width/height is 0 (scene not loaded yet), default to something reasonable
-//            if (availableWidth == 0) availableWidth = 800;
-//            if (availableHeight == 0) availableHeight = 600;
-//
-//            // Calculate scale inside the converter
-//            this.converter.autoFit(availableWidth, availableHeight);
-//            
-//         // --- DEBUG PRINT START ---
-//            System.out.println("--- MAP DEBUG INFO ---");
-//            System.out.println("Pane Size: " + availableWidth + " x " + availableHeight);
-//            System.out.println("Map Scale: " + this.converter.getScale());
-//            System.out.println("Map Offset: X=" + this.converter.toScreenX(0) + " Y=" + this.converter.toScreenY(0));
-            // --- DEBUG PRINT END ---
-            
-            
-            //insde the renderer there is a converter, inside this converter there is the sumoMap info
-            /*
-             * The Lambda () -> { ... }: This is the code you want to run in the background. It's an anonymous function that defines the task.
-             */
-            //Draw just the lanes first
-	         // DRAW LANES (The code you need)
-	         // We ask the renderer to create the Group of lanes using the active connection
-//	         Group lanesGroup = this.renderer.createLaneGroup(this.simManager.getConnection(), sumoMap);
             
          // Define the action (What happens when clicked?)
             Consumer<String> laneClickHandler = (laneId) -> {
@@ -270,6 +241,11 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 	         // We clear it first just in case, then add the new shapes
 	         this.lanePane.getChildren().clear();
 	         this.lanePane.getChildren().add(lanesGroup);
+	         
+	         Platform.runLater(() -> {
+	        	 this.mapInteractionHandler.centerMap(lanesGroup);
+	        	 
+	         });
 	         
 	         // This guarantees the sidebar is drawn last (on top)
 	         topHbox.toFront();
