@@ -12,7 +12,7 @@ import de.tudresden.sumo.cmd.Simulation;
 import de.tudresden.ws.container.SumoBoundingBox; // Or use simple doubles
 import it.polito.appeal.traci.SumoTraciConnection;
 
-public class MapManger {
+public class MapManager {
 //	Sumo Connection
 	private SumoTraciConnection sumoConnection;
 //    Static Network Data
@@ -29,7 +29,7 @@ public class MapManger {
     private double maxX;
     private double maxY;
 
-    public MapManger(SumoTraciConnection sumoConnection) {
+    public MapManager(SumoTraciConnection sumoConnection) {
         if(!sumoConnection.isClosed()) {
         	try {
         		this.sumoConnection = sumoConnection;

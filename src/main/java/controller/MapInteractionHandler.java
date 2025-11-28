@@ -10,6 +10,8 @@ import javafx.scene.input.ScrollEvent;
  * It ensures zooming focuses on the mouse cursor position.
  */
 public class MapInteractionHandler {
+	
+	//for the map interaction we have 
 
     private final Node inputNode;  // The container receiving events (e.g., StackPane/AnchorPane)
     private final Node targetNode; // The map Group that gets moved/scaled
@@ -33,10 +35,15 @@ public class MapInteractionHandler {
     private void addListeners() {
         // 1. Mouse Pressed: Record initial position for panning
         inputNode.setOnMousePressed(event -> {
-            mouseAnchorX = event.getSceneX();
+            mouseAnchorX = event.getSceneX();//this function get the current x on the whole scence
             mouseAnchorY = event.getSceneY();
-            translateAnchorX = targetNode.getTranslateX();
-            translateAnchorY = targetNode.getTranslateY();
+            translateAnchorX = targetNode.getTranslateX();//this func translate the 
+            translateAnchorY = targetNode.getTranslateY();//	
+            System.out.println(mouseAnchorX);
+            System.out.println(mouseAnchorY);
+            System.out.println(translateAnchorX);
+            System.out.println(translateAnchorY);
+            
         });
 
         // 2. Mouse Dragged: Pan the map
@@ -91,5 +98,30 @@ public class MapInteractionHandler {
             
             event.consume();
         });
+    }
+    
+    public void centerMap() {
+        // 1. Get Dimensions
+        // Target Node (Map Group) size - Use layout bounds for Groups
+        double mapWidth = targetNode.getBoundsInLocal().getWidth();
+        double mapHeight = targetNode.getBoundsInLocal().getHeight();
+
+        // Input Node (Anchor Pane) size - Use layout bounds for the container
+        double paneWidth = inputNode.getBoundsInLocal().getWidth();
+        double paneHeight = inputNode.getBoundsInLocal().getHeight();
+
+        // 2. Calculate Translation Offset
+        // (Container Size - Map Size) / 2
+        double offsetX = (paneWidth - mapWidth) / 2;
+        double offsetY = (paneHeight - mapHeight) / 2;
+
+        // 3. Apply Translation
+        targetNode.setTranslateX(offsetX);
+        targetNode.setTranslateY(offsetY);
+
+        // Update the anchors so the next pan starts from the center position
+        // This is optional but good practice if you pan immediately after centering.
+        // translateAnchorX = offsetX;
+        // translateAnchorY = offsetY;
     }
 }

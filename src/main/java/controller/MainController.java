@@ -23,7 +23,7 @@ import javafx.scene.layout.Pane;
 
 // Model & View Imports
 import model.SimulationManager;
-import model.infrastructure.MapManger;
+import model.infrastructure.MapManager;
 import model.vehicles.VehicleManager;
 import view.Renderer;
 import util.CoordinateConverter; // Ensure this is imported from your util/view package
@@ -145,7 +145,7 @@ public class MainController {
     private Map<String, Shape> vehicleVisuals = new HashMap<>();
     private Group mapContentGroup; // Container for zooming/panning
     private MapInteractionHandler mapInteractionHandler;
-    private SimulationQueue queue;
+    private SimulationQueue queue;	
 
     // Scaling constants
     private final double PADDING = 50.0;
@@ -202,9 +202,10 @@ public class MainController {
 
             // --- A. SETUP MAP ---
             // Now that we are connected, we have map bounds. Setup converter.
-            MapManger mapManager = this.simManager.getMapManager();
+            MapManager mapManager = this.simManager.getMapManager();
             this.renderer.setConverter(mapManager);
             this.converter = this.renderer.getConverter();
+            this.mapInteractionHandler.centerMap();
             
             
 //         // 2. --- CRITICAL FIX --- 
@@ -270,14 +271,6 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 	         this.lanePane.getChildren().clear();
 	         this.lanePane.getChildren().add(lanesGroup);
 	         
-//	         centerAndFitMap();
-	         
-	         
-//	         Rectangle clipRect = new Rectangle();
-//	         clipRect.widthProperty().bind(rightMapStackPane.widthProperty());
-//	         clipRect.heightProperty().bind(rightMapStackPane.heightProperty());
-//	         rightMapStackPane.setClip(clipRect);
-	      // --- FIX 2: Force Z-Order (Safety measure) ---
 	         // This guarantees the sidebar is drawn last (on top)
 	         topHbox.toFront();
 	         leftControlPanel.toFront();
@@ -285,18 +278,6 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 	          bottomLogArea.toFront();
 	          
 	         
-	         //Center the map
-//	         Platform.runLater(() -> {
-//	        	    // Calculate center based on the actual content size vs viewport size
-//	        	    
-//	        	    // Center the view (0.5 is the midpoint)
-//	        	    mapScrollPane.setHvalue(0.5); // (hMin + hMax) * 0.5
-//	        	    mapScrollPane.setVvalue(0.5); // (vMin + vMax) * 0.5
-//	        	    
-//	        	    // Optional: If you want to center on a specific coordinate (like the map center)
-//	        	    // double contentWidth = mapContentGroup.getBoundsInLocal().getWidth();
-//	        	    // mapScrollPane.setHvalue(0.5); 
-//	        	});
 	
 	         log("Static Map drawn with " + lanesGroup.getChildren().size() + " lanes.");
             
