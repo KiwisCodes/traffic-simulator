@@ -38,6 +38,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import data.SimulationQueue;
+import data.SimulationState;
 
 public class MainController {
 	
@@ -139,6 +140,7 @@ public class MainController {
     
     // Flags
     private volatile boolean isSimulationRunning = false;
+    private static int currentStep = 0;
 
     // --- Visualization ---
     // Map to track visual shapes: ID -> Shape (Used to update positions)
@@ -163,6 +165,11 @@ public class MainController {
         
         // 3. Initialize Thread Pool
         this.threadPool = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
+        
+        // 4. Map related
+        
+        // 5. Data
+        this.queue = new SimulationQueue(1000);
     }
     
     // Main entry point if running standalone (optional)
@@ -231,21 +238,21 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 
             // Pass this action to the renderer
             Group lanesGroup = this.renderer.createLaneGroup(
+            	mapManager, 
                 this.simManager.getConnection(), 
-                mapManager, 
                 laneClickHandler // <--- Passing the function here
             );
 	         
 	
 	         // 4. Add the lanes to the GUI Pane
 	         // We clear it first just in case, then add the new shapes
-	         this.lanePane.getChildren().clear();
+	         this.lanePane.getChildren().clear(); //temporary shut down to see yellow cars
 	         this.lanePane.getChildren().add(lanesGroup);
 	         
-	         Platform.runLater(() -> {
-	        	 this.mapInteractionHandler.centerMap(lanesGroup);
-	        	 
-	         });
+//	         Platform.runLater(() -> {
+//	        	 this.mapInteractionHandler.centerMap(lanesGroup);
+//	        	 
+//	         });
 	         
 	         // This guarantees the sidebar is drawn last (on top)
 	         topHbox.toFront();
@@ -265,10 +272,17 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
                 while (isSimulationRunning) {
                     try {
                         // 1. Step physics (Thread-Safe)
-                        simManager.step(); 
-                        
+                        this.simManager.step(); 
+                        this.queue.putState(this.simManager.getState());
+                        currentStep++;
+                        log("Current Step: " + currentStep);
                         // 2. Throttle speed (e.g., 100ms per step)
 //                        Thread.sleep(100); 
+                        
+                        if(this.simManager.getConnection().isClosed()) {
+                        	log("Dead");
+                        	break;
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -307,7 +321,7 @@ Why it's special: Code running inside handle() is executed on the JavaFX Applica
 This is the only thread allowed to modify UI elements (like moving a Circle or changing a Label text).
             	 */
             	
-//                updateView();
+                updateView();//maybe this should draw everything;
             	
             }
         };
@@ -318,57 +332,18 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
      * Updates the visual elements based on the latest Model snapshot.
      */
     private void updateView() {
-    		
-    	
-        // 1. Get Thread-Safe Snapshot (No manual synchronized needed here!)
-//        var vehicles = simManager.getActiveVehicles();
-//        int step = simManager.getCurrentStep();
-//        
-//        // 2. Update Labels
-//        simStepLabel.setText(String.valueOf(step));
-//        vehicleCountLabel.setText(String.valueOf(vehicles.size()));
-        
-        // 3. Update Dynamic Vehicle Shapes
-//        updateVehicleShapes(vehicles);
+    	SimulationState simulationState;
+		try {
+			simulationState = this.queue.pollState();
+			if(simulationState == null) return;
+			log("Took state");
+			this.renderer.renderVehicles(vehiclePane, simulationState.getVehicles());
+			this.vehiclePane.toFront();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
-    
-//    private void updateVehicleShapes(List<SumoVehicle> vehicles) {
-//        // List of IDs present in this snapshot
-//        List<String> currentIds = new ArrayList<>();
-//
-//        for (SumoVehicle v : vehicles) {
-//            currentIds.add(v.getId());
-//
-//            // A. Create Shape if new
-//            if (!vehicleVisuals.containsKey(v.getId())) {
-//                // Note: createVehicleShape only needs the data object, not the connection
-//                Shape s = renderer.createVehicleShape(null, v); // Connection not needed for simple shape logic
-//                vehicleVisuals.put(v.getId(), s);
-//                carPane.getChildren().add(s); // Add to pane
-//            }
-//
-//            // B. Move Shape
-//            Shape s = vehicleVisuals.get(v.getId());
-//            if (v.getPosition() != null) {
-//                // Convert Logic Coordinates -> Screen Coordinates
-//                double screenX = converter.transformX(v.getPosition().x);
-//                double screenY = converter.transformY(v.getPosition().y);
-//                
-//                s.setLayoutX(screenX);
-//                s.setLayoutY(screenY);
-//                // s.setRotate(v.getAngle()); // Optional rotation
-//            }
-//        }
-//
-//        // C. Cleanup (Remove shapes for vehicles that left)
-//        // We iterate via copy to avoid concurrent mod exception on the visuals map
-//        new ArrayList<>(vehicleVisuals.keySet()).forEach(id -> {
-//            if (!currentIds.contains(id)) {
-//                Shape s = vehicleVisuals.remove(id);
-//                carPane.getChildren().remove(s);
-//            }
-//        });
-//    }
     
     // --- HELPER: Logging ---
     private void log(String message) {

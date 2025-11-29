@@ -83,7 +83,7 @@ public class MapManager {
 
 //    Getters
     public List<String> getEdgeIds() { return edgeIdList; }
-    public List<String> getLaneIds() { return laneIdList; }
+    public List<String> getLaneIds() { return new ArrayList<>(laneIdList); }
     public List<String> getJunctionIds() { return junctionIds; }
     public double getWidth() { return maxX - minX; }
     public double getHeight() { return maxY - minY; }
@@ -106,46 +106,27 @@ public class MapManager {
 			String edgeID = this.edgeIdList.get(i);
 			Map<String, String> edgeInfos = new HashMap<>();
 			
-			edgeInfos.put("CO2Emission", String.valueOf(sumoConnection.do_job_get(Edge.getCO2Emission(edgeID))));
-			edgeInfos.put("COEmission", String.valueOf(sumoConnection.do_job_get(Edge.getCOEmission(edgeID))));
-			edgeInfos.put("electricityConsumption", String.valueOf(sumoConnection.do_job_get(Edge.getElectricityConsumption(edgeID))));
-			edgeInfos.put("fuelConsumption", String.valueOf(sumoConnection.do_job_get(Edge.getFuelConsumption(edgeID))));
-			edgeInfos.put("HCEmission", String.valueOf(sumoConnection.do_job_get(Edge.getHCEmission(edgeID))));
-			edgeInfos.put("laneNumber", String.valueOf(sumoConnection.do_job_get(Edge.getLaneNumber(edgeID))));
-			edgeInfos.put("lastStepHaltingNumber", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepHaltingNumber(edgeID))));
-			edgeInfos.put("lastStepLength", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepLength(edgeID))));
-			edgeInfos.put("lastStepMeanSpeed", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepMeanSpeed(edgeID))));
-			edgeInfos.put("lastStepOccupancy", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepOccupancy(edgeID))));
-			edgeInfos.put("lastStepVehicleNumber", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepVehicleNumber(edgeID))));
-			edgeInfos.put("NOxEmission", String.valueOf(sumoConnection.do_job_get(Edge.getNOxEmission(edgeID))));
-			edgeInfos.put("NoiseEmission", String.valueOf(sumoConnection.do_job_get(Edge.getNoiseEmission(edgeID))));
-			edgeInfos.put("PMxEmission", String.valueOf(sumoConnection.do_job_get(Edge.getPMxEmission(edgeID))));
-			edgeInfos.put("travelTime", String.valueOf(sumoConnection.do_job_get(Edge.getTraveltime(edgeID))));
-			edgeInfos.put("waitingTime", String.valueOf(sumoConnection.do_job_get(Edge.getWaitingTime(edgeID))));
+			//we dont need this much info, for each edge we only need the map for lane <"0", "edgeId_0"> -> <key, laneId>
+//			edgeInfos.put("CO2Emission", String.valueOf(sumoConnection.do_job_get(Edge.getCO2Emission(edgeID))));
+//			edgeInfos.put("COEmission", String.valueOf(sumoConnection.do_job_get(Edge.getCOEmission(edgeID))));
+//			edgeInfos.put("electricityConsumption", String.valueOf(sumoConnection.do_job_get(Edge.getElectricityConsumption(edgeID))));
+//			edgeInfos.put("fuelConsumption", String.valueOf(sumoConnection.do_job_get(Edge.getFuelConsumption(edgeID))));
+//			edgeInfos.put("HCEmission", String.valueOf(sumoConnection.do_job_get(Edge.getHCEmission(edgeID))));
+//			edgeInfos.put("laneNumber", String.valueOf(sumoConnection.do_job_get(Edge.getLaneNumber(edgeID))));
+//			edgeInfos.put("lastStepHaltingNumber", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepHaltingNumber(edgeID))));
+//			edgeInfos.put("lastStepLength", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepLength(edgeID))));
+//			edgeInfos.put("lastStepMeanSpeed", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepMeanSpeed(edgeID))));
+//			edgeInfos.put("lastStepOccupancy", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepOccupancy(edgeID))));
+//			edgeInfos.put("lastStepVehicleNumber", String.valueOf(sumoConnection.do_job_get(Edge.getLastStepVehicleNumber(edgeID))));
+//			edgeInfos.put("NOxEmission", String.valueOf(sumoConnection.do_job_get(Edge.getNOxEmission(edgeID))));
+//			edgeInfos.put("NoiseEmission", String.valueOf(sumoConnection.do_job_get(Edge.getNoiseEmission(edgeID))));
+//			edgeInfos.put("PMxEmission", String.valueOf(sumoConnection.do_job_get(Edge.getPMxEmission(edgeID))));
+//			edgeInfos.put("travelTime", String.valueOf(sumoConnection.do_job_get(Edge.getTraveltime(edgeID))));
+//			edgeInfos.put("waitingTime", String.valueOf(sumoConnection.do_job_get(Edge.getWaitingTime(edgeID))));
 			
 			edges.put(edgeID, edgeInfos);
 		}
-		
-		return edges;
-	}
-	
-	
-	//not done
-	public Map<String, Map<String, String>> getLanes() throws Exception{
-		Map<String, Map<String, String>> lanes = new HashMap<>();
-		
-		if(this.edgeIdList == null) {
-			Object result = this.sumoConnection.do_job_get(Edge.getIDList());
-			List<String> edgeIdList = (List<String>) result;
-			this.edgeIdList = edgeIdList;
-		}
-		
-		for(int i = 0; i < this.edgeIdList.size(); i++) {
-			String edgeID = this.edgeIdList.get(i);
-			Map<String, String> edgeInfos = new HashMap<>();
-			
-		}
-		
-		return lanes;
+		return new HashMap<>(edges);
+		//must return a copy, not reference;
 	}
 }

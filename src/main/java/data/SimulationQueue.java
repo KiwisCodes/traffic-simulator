@@ -18,5 +18,9 @@ public class SimulationQueue {
     public SimulationState takeState() throws InterruptedException {
         return queue.take(); 
     }
+    
+    public SimulationState pollState() throws InterruptedException{
+    	return queue.poll();
+    }
 
 }
