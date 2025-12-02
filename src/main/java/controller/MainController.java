@@ -23,7 +23,7 @@ import javafx.scene.layout.Pane;
 
 // Model & View Imports
 import model.SimulationManager;
-import model.infrastructure.MapManger;
+import model.infrastructure.MapManager;
 import model.vehicles.VehicleManager;
 import view.Renderer;
 import util.CoordinateConverter; // Ensure this is imported from your util/view package
@@ -38,6 +38,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import data.SimulationQueue;
+import data.SimulationState;
 
 public class MainController {
 	
@@ -139,13 +140,14 @@ public class MainController {
     
     // Flags
     private volatile boolean isSimulationRunning = false;
+    private volatile static int currentStep = 0;
 
     // --- Visualization ---
     // Map to track visual shapes: ID -> Shape (Used to update positions)
     private Map<String, Shape> vehicleVisuals = new HashMap<>();
     private Group mapContentGroup; // Container for zooming/panning
     private MapInteractionHandler mapInteractionHandler;
-    private SimulationQueue queue;
+    private SimulationQueue queue;	
 
     // Scaling constants
     private final double PADDING = 50.0;
@@ -163,6 +165,11 @@ public class MainController {
         
         // 3. Initialize Thread Pool
         this.threadPool = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
+        
+        // 4. Map related
+        
+        // 5. Data
+        this.queue = new SimulationQueue(1000);
     }
     
     // Main entry point if running standalone (optional)
@@ -174,15 +181,7 @@ public class MainController {
     public void initialize() {
         log("Controller initialized. Waiting to start...");
         this.mapInteractionHandler = new MapInteractionHandler(rightMapStackPane, rightMapPaneGroup);
-        
-//        Rectangle clipRect = new Rectangle();
-//
-//        // 2. Bind the clip to the StackPane (which acts as the "Center" window)
-//        clipRect.widthProperty().bind(rightMapStackPane.widthProperty());
-//        clipRect.heightProperty().bind(rightMapStackPane.heightProperty());
-//
-//        // 3. Apply the clip
-//        rightMapStackPane.setClip(clipRect);
+
         
         
     }
@@ -202,39 +201,24 @@ public class MainController {
 
             // --- A. SETUP MAP ---
             // Now that we are connected, we have map bounds. Setup converter.
-            MapManger mapManager = this.simManager.getMapManager();
+            MapManager mapManager = this.simManager.getMapManager();
             this.renderer.setConverter(mapManager);
+            
+            
+            double viewWidth = rightMapStackPane.getWidth();
+            double viewHeight = rightMapStackPane.getHeight();
+
+            // Fallback: If the window just opened, size might be 0. Guess a size.
+            if (viewWidth == 0) viewWidth = 1400;
+            if (viewHeight == 0) viewHeight = 900;
+
+            // This calculates Scale AND the Offset needed to center it
+//            this.renderer.getConverter().autoFit(viewWidth, viewHeight);
+            
+            
             this.converter = this.renderer.getConverter();
+//            this.mapInteractionHandler.centerMap(this.lanePane);
             
-            
-//         // 2. --- CRITICAL FIX --- 
-//            // Calculate the correct scale based on the View Pane's current size
-//            double availableWidth = rightMapStackPane.getWidth();
-//            double availableHeight = rightMapStackPane.getHeight();
-//            
-//            // Safety check: if width/height is 0 (scene not loaded yet), default to something reasonable
-//            if (availableWidth == 0) availableWidth = 800;
-//            if (availableHeight == 0) availableHeight = 600;
-//
-//            // Calculate scale inside the converter
-//            this.converter.autoFit(availableWidth, availableHeight);
-//            
-//         // --- DEBUG PRINT START ---
-//            System.out.println("--- MAP DEBUG INFO ---");
-//            System.out.println("Pane Size: " + availableWidth + " x " + availableHeight);
-//            System.out.println("Map Scale: " + this.converter.getScale());
-//            System.out.println("Map Offset: X=" + this.converter.toScreenX(0) + " Y=" + this.converter.toScreenY(0));
-            // --- DEBUG PRINT END ---
-            
-            
-            //insde the renderer there is a converter, inside this converter there is the sumoMap info
-            /*
-             * The Lambda () -> { ... }: This is the code you want to run in the background. It's an anonymous function that defines the task.
-             */
-            //Draw just the lanes first
-	         // DRAW LANES (The code you need)
-	         // We ask the renderer to create the Group of lanes using the active connection
-//	         Group lanesGroup = this.renderer.createLaneGroup(this.simManager.getConnection(), sumoMap);
             
          // Define the action (What happens when clicked?)
             Consumer<String> laneClickHandler = (laneId) -> {
@@ -259,44 +243,31 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 
             // Pass this action to the renderer
             Group lanesGroup = this.renderer.createLaneGroup(
+            	mapManager, 
                 this.simManager.getConnection(), 
-                mapManager, 
                 laneClickHandler // <--- Passing the function here
             );
 	         
 	
 	         // 4. Add the lanes to the GUI Pane
 	         // We clear it first just in case, then add the new shapes
-	         this.lanePane.getChildren().clear();
+	         this.lanePane.getChildren().clear(); //temporary shut down to see yellow cars
 	         this.lanePane.getChildren().add(lanesGroup);
 	         
-//	         centerAndFitMap();
+//	         this.mapInteractionHandler.centerMap(this.lanePane);// the java wait for 1 more frame before calculating the size of the lanePane, so init is 0x0
 	         
+//	         Platform.runLater(() -> {
+//	        	 this.mapInteractionHandler.centerMap(lanePane);
+//	        	 
+//	         });
 	         
-//	         Rectangle clipRect = new Rectangle();
-//	         clipRect.widthProperty().bind(rightMapStackPane.widthProperty());
-//	         clipRect.heightProperty().bind(rightMapStackPane.heightProperty());
-//	         rightMapStackPane.setClip(clipRect);
-	      // --- FIX 2: Force Z-Order (Safety measure) ---
 	         // This guarantees the sidebar is drawn last (on top)
-	         topHbox.toFront();
-	         leftControlPanel.toFront();
-//	         // If you have a log area at the bottom, bring that to front too
-	          bottomLogArea.toFront();
+//	         topHbox.toFront();
+//	         leftControlPanel.toFront();
+//////	         // If you have a log area at the bottom, bring that to front too
+//	          bottomLogArea.toFront();
 	          
 	         
-	         //Center the map
-//	         Platform.runLater(() -> {
-//	        	    // Calculate center based on the actual content size vs viewport size
-//	        	    
-//	        	    // Center the view (0.5 is the midpoint)
-//	        	    mapScrollPane.setHvalue(0.5); // (hMin + hMax) * 0.5
-//	        	    mapScrollPane.setVvalue(0.5); // (vMin + vMax) * 0.5
-//	        	    
-//	        	    // Optional: If you want to center on a specific coordinate (like the map center)
-//	        	    // double contentWidth = mapContentGroup.getBoundsInLocal().getWidth();
-//	        	    // mapScrollPane.setHvalue(0.5); 
-//	        	});
 	
 	         log("Static Map drawn with " + lanesGroup.getChildren().size() + " lanes.");
             
@@ -306,12 +277,26 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
             threadPool.submit(() -> {
                 log("Simulation Thread Started.");
                 while (isSimulationRunning) {
+                	
+                	if(this.simManager.getConnection().isClosed()) {
+                		log("Connection lost, stopping loop");
+                		break;
+                	}
+                	
                     try {
                         // 1. Step physics (Thread-Safe)
-                        simManager.step(); 
-                        
+                        this.simManager.step(); 
+//                        this.queue.putState(this.simManager.getState());// when click stop, the queue is doing put, but interrupted -> error
+                        this.queue.offerState(this.simManager.getState());// by this we dont get interrupted;
+                        currentStep++;
+                        log("Current Step: " + currentStep);
                         // 2. Throttle speed (e.g., 100ms per step)
 //                        Thread.sleep(100); 
+                        
+                        if(this.simManager.getConnection().isClosed()) {
+                        	log("Dead");
+                        	break;
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -350,7 +335,7 @@ Why it's special: Code running inside handle() is executed on the JavaFX Applica
 This is the only thread allowed to modify UI elements (like moving a Circle or changing a Label text).
             	 */
             	
-//                updateView();
+                updateView();//maybe this should draw everything;
             	
             }
         };
@@ -361,57 +346,18 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
      * Updates the visual elements based on the latest Model snapshot.
      */
     private void updateView() {
-    		
-    	
-        // 1. Get Thread-Safe Snapshot (No manual synchronized needed here!)
-//        var vehicles = simManager.getActiveVehicles();
-//        int step = simManager.getCurrentStep();
-//        
-//        // 2. Update Labels
-//        simStepLabel.setText(String.valueOf(step));
-//        vehicleCountLabel.setText(String.valueOf(vehicles.size()));
-        
-        // 3. Update Dynamic Vehicle Shapes
-//        updateVehicleShapes(vehicles);
+    	SimulationState simulationState;
+		try {
+			simulationState = this.queue.pollState();
+			if(simulationState == null) return;
+			log("Took state");
+			this.renderer.renderVehicles(vehiclePane, simulationState.getVehicles());
+//			this.vehiclePane.toFront();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
-    
-//    private void updateVehicleShapes(List<SumoVehicle> vehicles) {
-//        // List of IDs present in this snapshot
-//        List<String> currentIds = new ArrayList<>();
-//
-//        for (SumoVehicle v : vehicles) {
-//            currentIds.add(v.getId());
-//
-//            // A. Create Shape if new
-//            if (!vehicleVisuals.containsKey(v.getId())) {
-//                // Note: createVehicleShape only needs the data object, not the connection
-//                Shape s = renderer.createVehicleShape(null, v); // Connection not needed for simple shape logic
-//                vehicleVisuals.put(v.getId(), s);
-//                carPane.getChildren().add(s); // Add to pane
-//            }
-//
-//            // B. Move Shape
-//            Shape s = vehicleVisuals.get(v.getId());
-//            if (v.getPosition() != null) {
-//                // Convert Logic Coordinates -> Screen Coordinates
-//                double screenX = converter.transformX(v.getPosition().x);
-//                double screenY = converter.transformY(v.getPosition().y);
-//                
-//                s.setLayoutX(screenX);
-//                s.setLayoutY(screenY);
-//                // s.setRotate(v.getAngle()); // Optional rotation
-//            }
-//        }
-//
-//        // C. Cleanup (Remove shapes for vehicles that left)
-//        // We iterate via copy to avoid concurrent mod exception on the visuals map
-//        new ArrayList<>(vehicleVisuals.keySet()).forEach(id -> {
-//            if (!currentIds.contains(id)) {
-//                Shape s = vehicleVisuals.remove(id);
-//                carPane.getChildren().remove(s);
-//            }
-//        });
-//    }
     
     // --- HELPER: Logging ---
     private void log(String message) {

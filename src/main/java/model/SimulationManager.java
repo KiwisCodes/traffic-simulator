@@ -21,7 +21,7 @@ import model.vehicles.VehicleManager;
 //import model.vehicles.Bike;
 
 // Import Infrastructure
-import model.infrastructure.MapManger;
+import model.infrastructure.MapManager;
 import model.infrastructure.TrafficlightManager;
 import data.*;
 
@@ -42,7 +42,7 @@ public class SimulationManager {
     private String sumoConfigFilePath;
     
     // Step length in seconds (0.001s is very granular/fast)
-    private String stepLength = "0.001"; 
+    private String stepLength = "1"; 
 
     // --- TraCI Connection ---
     private SumoTraciConnection sumoConnection;
@@ -51,10 +51,9 @@ public class SimulationManager {
     // This object acts as a "key". Only one thread can hold this key at a time.
     // We use it to prevent the GUI from reading the vehicle list while the 
     // Simulation thread is deleting/adding to it.
-    private final Object stateLock = new Object();
+//    private final Object stateLock = new Object();
 
     // --- State Data (The "World") ---
-    // 'volatile' ensures that changes to the reference are immediately visible to other threads
     private	Map<String, Map<String, String>> listOfEdges;
 	private	Map<String, Map<String, Object>> listOfVehicles;
 	private List<String> listOfTrafficlightIds;
@@ -64,21 +63,21 @@ public class SimulationManager {
     // Sub-Managers & Infrastructure
     private StatisticsManager statisticsManager;
     private ReportManager reportManager;
-    private MapManger mapManager; // Holds static map data (Lanes, Edges)
+    private MapManager mapManager; // Holds static map data (Lanes, Edges)
     private VehicleManager vehicleManager;
     private TrafficlightManager trafficlightManager;
     
-    private SimulationQueue queue;
+//    private SimulationQueue queue;
+    private SimulationState simulationState;
 	private static int routeCounter = 0;
 	public boolean isRunning = false;
 
     // --- Constructor ---
     public SimulationManager(SimulationQueue queue) {
     	this.sumoConnection = new SumoTraciConnection(sumoPath, sumoConfigFileName);
-		this.mapManager = new MapManger(sumoConnection);
-		this.vehicleManager = new VehicleManager(sumoConnection);
-		this.trafficlightManager = new TrafficlightManager(sumoConnection);
-		this.queue = queue;
+//		this.mapManager = new MapManager(sumoConnection);
+//		this.vehicleManager = new VehicleManager(sumoConnection);
+//		this.trafficlightManager = new TrafficlightManager(sumoConnection);
     }
 
     // ====================================================================
@@ -106,8 +105,17 @@ public class SimulationManager {
             System.out.println("⏳ Launching SUMO... (This may pause until TraCI connects)");
             this.sumoConnection.runServer(); // Starts the SUMO process
             
+            if(this.sumoConnection.isClosed()) {
+        		System.out.println("Is closed");
+        	}
+        	else {
+        		System.out.println("Is not closed");
+        	}
+            
             // Load Static Map Data (Edges/Bounds) immediately after connecting
-            this.mapManager = new MapManger(sumoConnection);
+            this.mapManager = new MapManager(sumoConnection);
+            this.vehicleManager = new VehicleManager(sumoConnection);
+    		this.trafficlightManager = new TrafficlightManager(sumoConnection);
             // You would call methods here to populate mapManager using TraCI calls:
             // loadStaticMapData(); (Implementation logic from previous chat)
             
@@ -177,13 +185,19 @@ public class SimulationManager {
             // --- PHASE 1: Heavy Lifting (Network I/O) ---
             // We do this OUTSIDE the lock so the GUI doesn't freeze waiting for TraCI.
             this.sumoConnection.do_timestep();
+//            System.out.println("just did time step");
+            this.vehicleManager.step();
+            this.simulationState = new SimulationState(this.mapManager.getEdges(),
+            										this.vehicleManager.getVehiclesData(),
+            										this.mapManager.getLaneIds());
+            		
             
             // Fetch new vehicle data into a TEMPORARY local list (not implemented yet)
 //            List<SumoVehicle> nextStepVehicles = fetchVehicleData(); 
 
             // --- PHASE 2: Safe Swap (Memory Operation) ---
             // We lock only for the split-second it takes to swap the reference.
-            synchronized (stateLock) {
+//            synchronized (stateLock) {
 //                this.activeVehicles = nextStepVehicles; // Atomic reference swap
 //                this.currentStep++;
                 
@@ -191,7 +205,7 @@ public class SimulationManager {
 //                if (statisticsManager != null) {
 //                    statisticsManager.updateStatistics(0, activeVehicles.size());
 //                }
-            }
+//            }
             
         } catch (Exception e) {
 //            System.err.println("❌ Error during timestep " + currentStep);
@@ -295,12 +309,18 @@ public class SimulationManager {
 //        }
 //    }
     
-    
+//    public void setSimulationState() {
+//    	this.simulationState = new SimulationState(this.mapManager.getEdges(),
+//    											this.trafficlightManager.
+//    }
     
 
     public StatisticsManager getStatisticsManager() { return statisticsManager; }
     public ReportManager getReportManager() { return reportManager; }
 //    public int getCurrentStep() { return currentStep; } // Volatile makes this safe
     public SumoTraciConnection getConnection() { return sumoConnection; }
-    public MapManger getMapManager() { return mapManager; }
+    public MapManager getMapManager() { return mapManager; }
+    public SimulationState getState() {
+    	return this.simulationState;
+    }
 }
