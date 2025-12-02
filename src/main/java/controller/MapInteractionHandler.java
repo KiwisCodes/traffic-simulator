@@ -10,6 +10,8 @@ import javafx.scene.input.ScrollEvent;
  * It ensures zooming focuses on the mouse cursor position.
  */
 public class MapInteractionHandler {
+	
+	//for the map interaction we have 
 
     private final Node inputNode;  // The container receiving events (e.g., StackPane/AnchorPane)
     private final Node targetNode; // The map Group that gets moved/scaled
@@ -33,10 +35,15 @@ public class MapInteractionHandler {
     private void addListeners() {
         // 1. Mouse Pressed: Record initial position for panning
         inputNode.setOnMousePressed(event -> {
-            mouseAnchorX = event.getSceneX();
+            mouseAnchorX = event.getSceneX();//this function get the current x on the whole scence
             mouseAnchorY = event.getSceneY();
-            translateAnchorX = targetNode.getTranslateX();
-            translateAnchorY = targetNode.getTranslateY();
+            translateAnchorX = targetNode.getTranslateX();//this func translate the 
+            translateAnchorY = targetNode.getTranslateY();//	
+            System.out.println(mouseAnchorX);
+            System.out.println(mouseAnchorY);
+            System.out.println(translateAnchorX);
+            System.out.println(translateAnchorY);
+            
         });
 
         // 2. Mouse Dragged: Pan the map
@@ -91,5 +98,78 @@ public class MapInteractionHandler {
             
             event.consume();
         });
+    }
+    
+    public void centerMap(Node contentBoundsNode) {
+        System.out.println("\n================== MAP CENTERING DEBUG LOG ==================");
+
+        // --- 1. LOG SCALE ---
+        double currentScaleX = targetNode.getScaleX();
+        double currentScaleY = targetNode.getScaleY();
+        System.out.println("CURRENT ZOOM SCALE: " + String.format("%.4f", currentScaleX));
+
+        // --- 2. GET CONTENT BOUNDS (The Roads) ---
+        var mapBounds = contentBoundsNode.getLayoutBounds();
+        double mapMinX = mapBounds.getMinX();
+        double mapMinY = mapBounds.getMinY();
+        double mapWidth = mapBounds.getWidth();
+        double mapHeight = mapBounds.getHeight();
+        double mapMaxX = mapBounds.getMaxX();
+        double mapMaxY = mapBounds.getMaxY();
+
+        System.out.println("MAP CONTENT BOUNDS (LanePane):");
+        System.out.println("   Min (Top-Left): (" + String.format("%.2f", mapMinX) + ", " + String.format("%.2f", mapMinY) + ")");
+        System.out.println("   Max (Bot-Right): (" + String.format("%.2f", mapMaxX) + ", " + String.format("%.2f", mapMaxY) + ")");
+        System.out.println("   Size: " + String.format("%.2f", mapWidth) + " x " + String.format("%.2f", mapHeight));
+
+        // CALCULATE MAP CENTER
+        double mapCenterX = mapMinX + (mapWidth / 2.0);
+        double mapCenterY = mapMinY + (mapHeight / 2.0);
+        System.out.println("   CALCULATED MAP CENTER: (" + String.format("%.2f", mapCenterX) + ", " + String.format("%.2f", mapCenterY) + ")");
+
+        // --- 3. GET VIEWPORT BOUNDS (The Screen) ---
+        double viewWidth = inputNode.getLayoutBounds().getWidth();
+        double viewHeight = inputNode.getLayoutBounds().getHeight();
+        
+        // Safety check against the Scene size
+        if (inputNode.getScene() != null) {
+            double sceneHeight = inputNode.getScene().getHeight();
+            double sceneWidth = inputNode.getScene().getWidth();
+            // Log if we are capping the size
+            if (viewHeight > sceneHeight || viewWidth > sceneWidth) {
+                 System.out.println("   [NOTICE] StackPane is larger than Scene. Capping dimensions.");
+                 viewHeight = Math.min(viewHeight, sceneHeight);
+                 viewWidth = Math.min(viewWidth, sceneWidth);
+            }
+        }
+
+        double paneCenterX = viewWidth / 2.0;
+        double paneCenterY = viewHeight / 2.0;
+
+        System.out.println("VIEWPORT (Screen) DETAILS:");
+        System.out.println("   Visible Size: " + String.format("%.2f", viewWidth) + " x " + String.format("%.2f", viewHeight));
+        System.out.println("   SCREEN CENTER: (" + String.format("%.2f", paneCenterX) + ", " + String.format("%.2f", paneCenterY) + ")");
+
+        // --- 4. CALCULATE DELTA (The movement needed) ---
+        // Formula: ScreenCenter - MapCenter
+        double deltaX = paneCenterX - mapCenterX;
+        double deltaY = paneCenterY - mapCenterY;
+
+        System.out.println("CALCULATED TRANSLATION:");
+        System.out.println("   Math says move X by: " + String.format("%.2f", deltaX));
+        System.out.println("   Math says move Y by: " + String.format("%.2f", deltaY));
+
+        // --- 5. YOUR MANUAL ADJUSTMENT (For comparison) ---
+        double manualX = deltaX; 
+        double manualY = deltaY;
+        System.out.println("YOUR ADJUSTMENT APPLIED:");
+        System.out.println("   Final X: " + String.format("%.2f", manualX));
+        System.out.println("   Final Y: " + String.format("%.2f", manualY));
+
+        // Apply the Manual one for now so it looks good while we debug
+        targetNode.setTranslateX(manualX);
+        targetNode.setTranslateY(manualY);
+        
+        System.out.println("=============================================================\n");
     }
 }

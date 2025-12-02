@@ -1,6 +1,19 @@
 view/Renderer.class
 view/MainGUI.class
 util/CoordinateConverter.class
+<<<<<<< HEAD
 model/StatisticsManager.class
 model/infrastructure/MapManger.class
 model/ReportManager.class
+=======
+controller/MapInteractionHandler.class
+data/SimulationState.class
+testjava/TestSimulationThreads.class
+model/StatisticsManager.class
+model/SimulationManager.class
+data/SimulationQueue.class
+model/ReportManager.class
+model/infrastructure/MapManager.class
+controller/MainController.class
+model/infrastructure/TrafficlightManager.class
+>>>>>>> main

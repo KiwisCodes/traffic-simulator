@@ -295,7 +295,6 @@
               <!-- fx:id added here -->
               <StackPane fx:id="rightMapStackPane" alignment="CENTER" BorderPane.alignment="CENTER">
                   <children>
-                  <AnchorPane fx:id="mapAnchorPane" StackPane.alignment="CENTER" />
                   <Group fx:id="rightMapPaneGroup" StackPane.alignment="CENTER">
                      <children>
                         

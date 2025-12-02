@@ -1,3 +1,154 @@
+//package view;
+//
+//import java.util.List;
+//import java.util.function.Consumer; // [NEW] Needed for the callback
+//
+//import de.tudresden.sumo.cmd.Edge;
+//import de.tudresden.sumo.cmd.Lane;
+//import de.tudresden.sumo.objects.SumoGeometry;
+//import de.tudresden.sumo.objects.SumoPosition2D;
+//import it.polito.appeal.traci.SumoTraciConnection;
+//import javafx.scene.Cursor; // [NEW] Change cursor to hand
+//import javafx.scene.Group;
+//import javafx.scene.effect.BlurType; // [NEW] For Glow
+//import javafx.scene.effect.DropShadow; // [NEW] For Glow
+//import javafx.scene.paint.Color;
+//import javafx.scene.shape.Circle;
+//import javafx.scene.shape.Polyline;
+//import javafx.scene.shape.Rectangle;
+//import javafx.scene.shape.Shape;
+//import javafx.scene.shape.StrokeLineCap;
+//import javafx.scene.shape.StrokeLineJoin;
+//import model.infrastructure.MapManager;
+//import model.vehicles.*;
+//import util.CoordinateConverter;
+//
+//// Helper class to handle the creation of JavaFX shapes, groups
+//public class Renderer {
+//    private CoordinateConverter converter;
+//    
+//    // [NEW] Define the glow effect once to save memory
+//    private static final DropShadow HOVER_GLOW = new DropShadow();
+//
+//    public Renderer(){
+//        this.converter = new CoordinateConverter();
+//        
+//        // [NEW] Initialize the Glow Styling
+//        HOVER_GLOW.setColor(Color.CYAN);
+//        HOVER_GLOW.setRadius(15); 
+//        HOVER_GLOW.setSpread(0.6);
+//        HOVER_GLOW.setBlurType(BlurType.GAUSSIAN);
+//    }
+//    
+//    public void setConverter(MapManager sumoMap) {
+//        this.converter.setBound(sumoMap);
+//    }
+//    
+//    public CoordinateConverter getConverter() {
+//        return this.converter;
+//    }
+//
+//    //implement later
+////    public Shape createVehicleShape(SumoTraciConnection sumoConnection, Vehicle vehicle) {
+////        if (vehicle instanceof Car) {
+////            return new Circle(4, Color.BLUE);
+////        } else if (vehicle instanceof Bus) {
+////            return new Rectangle(12, 5, Color.RED);
+////        } else if (vehicle instanceof Truck) {
+////            return new Rectangle(15, 6, Color.ORANGE);
+////        } else if (vehicle instanceof Bike) {
+////            return new Circle(2, Color.GREEN);
+////        }
+////        // Default
+////        return new Circle(3, Color.GRAY);
+////    }
+//    
+//    /**
+//     * [UPDATED] Now accepts a 'Consumer' callback to handle clicks
+//     */
+//    public Group createLaneGroup(SumoTraciConnection sumoConnection, MapManager sumoMap, Consumer<String> onLaneClick) {
+//        List<String> edges =  sumoMap.getEdgeIds();
+//        Group laneGroup =  new Group();
+//        
+//        try {
+//            for(String edge : edges) {
+//                int numberOfLanes = (int) sumoConnection.do_job_get(Edge.getLaneNumber(edge));
+//                
+//                for(int i = 0; i < numberOfLanes; i++) {
+//                    Polyline singleLaneShape = new Polyline();
+//                    String laneId = edge + "_" + i;
+//                    
+//                    // [NEW] 1. Store the ID so we can retrieve it on click
+//                    singleLaneShape.setUserData(laneId);
+//                    
+//                    SumoGeometry geometry = (SumoGeometry) sumoConnection.do_job_get(Lane.getShape(laneId));
+//                    double laneWidth = (double) sumoConnection.do_job_get(Lane.getWidth(laneId));
+//                    
+//                    for(SumoPosition2D point : geometry.coords) {
+//                        double xScreen = this.converter.toScreenX(point.x);
+//                        double yScreen = this.converter.toScreenY(point.y);
+//                        singleLaneShape.getPoints().addAll(xScreen, yScreen);
+//                    }
+//                    
+//                    // [NEW] 2. Improved Styling
+//                    Color asphaltColor = Color.rgb(50, 50, 50);
+//                    singleLaneShape.setStroke(asphaltColor);
+//                    singleLaneShape.setFill(null); // Important: Remove fill to avoid weird artifacts
+//                    
+//                    // Ensure line is at least 3px wide so it is clickable, even if scaled down
+//                    double visualWidth = converter.getScale() * laneWidth;
+//                    singleLaneShape.setStrokeWidth(Math.max(3.0, visualWidth));
+//                    
+//                    singleLaneShape.setStrokeLineJoin(StrokeLineJoin.ROUND);
+//                    singleLaneShape.setStrokeLineCap(StrokeLineCap.ROUND);
+//                    singleLaneShape.setSmooth(true);
+//                    
+//                    // [NEW] 3. Add Interaction Listeners
+//                    
+//                    // HOVER ENTER
+//                    singleLaneShape.setOnMouseEntered(e -> {
+//                        singleLaneShape.setEffect(HOVER_GLOW);       // Turn on glow
+//                        singleLaneShape.setStroke(Color.LIGHTGRAY);  // Lighten the road
+//                        singleLaneShape.setCursor(Cursor.HAND);      // Show hand cursor
+//                        singleLaneShape.toFront(); // Optional: Bring hovered road to top
+//                    });
+//
+//                    // HOVER EXIT
+//                    singleLaneShape.setOnMouseExited(e -> {
+//                        singleLaneShape.setEffect(null);             // Turn off glow
+//                        singleLaneShape.setStroke(asphaltColor);     // Reset color
+//                        singleLaneShape.setCursor(Cursor.DEFAULT);
+//                    });
+//
+//                    // CLICK
+//                    singleLaneShape.setOnMouseClicked(e -> {
+//                        // Check if a handler was provided
+//                        if (onLaneClick != null) {
+//                            String clickedId = (String) singleLaneShape.getUserData();
+//                            onLaneClick.accept(clickedId);
+//                        }
+//                    });
+//                    
+//                    laneGroup.getChildren().add(singleLaneShape);
+//                }
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        
+//        return laneGroup;
+//    }
+//    
+////implement later
+//    
+////    public Shape createJunctionShape(SumoTraciConnection sumoConnection, SumoMap sumoMap) {
+////      // ... (kept as is) ...
+////    }
+//}
+
+
+
+
 package view;
 
 // --- Java Util ---
@@ -22,28 +173,24 @@ import de.tudresden.sumo.cmd.Lane;           // Lệnh lấy thông tin Lane
 import de.tudresden.sumo.cmd.Junction;       // Lệnh lấy thông tin Junction
 import de.tudresden.sumo.objects.SumoGeometry;   // Chứa danh sách tọa độ hình dáng
 import de.tudresden.sumo.objects.SumoPosition2D; // Tọa độ X, Y lẻ
-
+import model.infrastructure.MapManager;
 // --- Project Classes (Các class của nhóm bạn) ---
-import model.infrastructure.MapManger; // Lưu ý: Giữ nguyên lỗi chính tả MapManger như file của bạn
 import util.CoordinateConverter;
-
 //import cần thiết cho đèn giao thông:
 import de.tudresden.sumo.cmd.Trafficlight; // Lệnh lấy đèn
 import de.tudresden.sumo.cmd.Junction;     // Lệnh lấy vị trí ngã tư
 import javafx.scene.shape.Circle;          // Để vẽ hình tròn
-
+	
 // import cho vẽ xe
 import de.tudresden.sumo.objects.SumoColor;     // Để hiểu màu sắc
 import javafx.scene.shape.Polygon;   // vẽ hình 
 import java.util.Map;
-
 public class Renderer {
 	
 	// Controller gọi hàm này để cài đặt kích thước bản đồ
-    public void setConverter(MapManger mapManager) {
+    public void setConverter(MapManager mapManager) {
         this.converter.setBound(mapManager);
     }
-
     // Controller gọi hàm này để lấy converter ra tính toán AutoFit
     public CoordinateConverter getConverter() {
         return this.converter;
@@ -72,7 +219,7 @@ public class Renderer {
      * @param mapManager: chứa thông tin ID và biên (bounds)
      * @param connection: dùng để lấy hình dáng (Shape) chi tiết từ SUMO
      */
-    public Group createLaneGroup(MapManger mapManager, SumoTraciConnection connection,Consumer<String> onLaneClick) {
+    public Group createLaneGroup(MapManager mapManager, SumoTraciConnection connection,Consumer<String> onLaneClick) {
         Group staticGroup = new Group();
         
         //Thứ tự đúng: setBound (biết map to bao nhiêu) -> autoFit (tính tỷ lệ thu nhỏ) -> Vòng lặp vẽ (dùng tỷ lệ đó để vẽ).
@@ -90,7 +237,7 @@ public class Renderer {
             double mapDisplayWidth = view.MainGUI.windowWidth * 0.6; 
             double mapDisplayHeight = view.MainGUI.windowHeight * 0.80;
             
-            this.converter.autoFit(mapDisplayWidth, mapDisplayHeight);
+//            this.converter.autoFit(mapDisplayWidth, mapDisplayHeight);
         }
 
         try {
@@ -164,10 +311,10 @@ public class Renderer {
                 // 3. Thêm điểm này vào đường gấp khúc (Polyline)
                 lanePolyline.getPoints().addAll(screenX, screenY);
             }
-
+            double laneWidth = (double) connection.do_job_get(Lane.getWidth(laneId));
             // 4. Style cho đường (Màu sắc, độ dày)
             lanePolyline.setStroke(Color.GRAY); // Màu đường nhựa
-            lanePolyline.setStrokeWidth(4.0);   // Độ rộng đường (pixel) - có thể chỉnh theo zoom nếu muốn xịn
+            lanePolyline.setStrokeWidth(laneWidth);   // Độ rộng đường (pixel) - có thể chỉnh theo zoom nếu muốn xịn
             lanePolyline.setStrokeLineCap(StrokeLineCap.ROUND);
             
             // Lưu ID vào UserData để sau này click vào biết là đường nào
@@ -179,7 +326,6 @@ public class Renderer {
                 lanePolyline.setStroke(Color.LIGHTGRAY);
                 lanePolyline.setCursor(Cursor.HAND);
             });
-
             lanePolyline.setOnMouseExited(e -> {
                 lanePolyline.setEffect(null);
                 lanePolyline.setStroke(Color.GRAY);
@@ -320,6 +466,7 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
     vehiclePane.getChildren().clear();
 
     if (vehicleData == null || vehicleData.isEmpty()) {
+    	System.out.println("Empty vehicle map");
         return; // nếu không có xe nào thì thôi
     }
 
@@ -355,8 +502,8 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
                     simX = pos.x; // gán simX là pos.x
                     simY = pos.y; // gán simX là pos.y
                 }
-                System.out.println(simX + " " + simY);
-                Thread.sleep(1000);
+//                System.out.println(simX + " " + simY);
+//                Thread.sleep(1000);
             }
 
             // kiểm tra cái kiểu của Angle và ép kiểu i như làm ở 
@@ -368,27 +515,29 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
             }
 
             // Lấy màu Đỏ, Lục, Lam y nguyên của SUMO, nhưng hãy nén độ đậm đặc từ thang 255 xuống thang 1.0 cho JavaFX hiểu.
-            if (props.containsKey("Color")) {
-                Object colorObj = props.get("Color");
-                if (colorObj instanceof SumoColor) {
-                    SumoColor sc = (SumoColor) colorObj;
-                    carColor = Color.rgb(sc.r, sc.g, sc.b, sc.a / 255.0);
-                    //SUMO (SumoColor): Lưu trữ màu sắc theo chuẩn số nguyên từ 0 đến 255.
-                    //Ví dụ: Đỏ=255, Xanh=0, Độ đậm đặc (Alpha)=255.
-                    // Còn JavaFX có 3 tham số đầu (R, G, B): Chấp nhận số nguyên 0-255. (Giống SUMO).
-                    //Nhưng tham số thứ 4 (Alpha/Opacity): Lại chỉ chấp nhận số thực từ 0.0 đến 1.0. (Khác SUMO).
-                    // JavaFX quy định: 1.0 là đặc, 0.0 là tàng hình.
-                    //Ta phải lấy giá trị của SUMO chia cho 255.0 để quy đổi về thang 0-1.
-                    //Trong Java, nếu bạn viết sc.a / 255 (số nguyên chia số nguyên), kết quả sẽ bị làm tròn xuống.
-                    //Việc thêm .0 biến nó thành phép chia số thực (double), giúp giữ lại phần thập phân (ví dụ 0.5) để hiển thị độ mờ chính xác.
-                }
-            }
+            //this color thing is wrong
+//            if (props.containsKey("Color")) {
+//                Object colorObj = props.get("Color");
+//                if (colorObj instanceof SumoColor) {
+//                    SumoColor sc = (SumoColor) colorObj;
+//                    carColor = Color.rgb(sc.r, sc.g, sc.b, sc.a / 255.0);
+//                    //SUMO (SumoColor): Lưu trữ màu sắc theo chuẩn số nguyên từ 0 đến 255.
+//                    //Ví dụ: Đỏ=255, Xanh=0, Độ đậm đặc (Alpha)=255.
+//                    // Còn JavaFX có 3 tham số đầu (R, G, B): Chấp nhận số nguyên 0-255. (Giống SUMO).
+//                    //Nhưng tham số thứ 4 (Alpha/Opacity): Lại chỉ chấp nhận số thực từ 0.0 đến 1.0. (Khác SUMO).
+//                    // JavaFX quy định: 1.0 là đặc, 0.0 là tàng hình.
+//                    //Ta phải lấy giá trị của SUMO chia cho 255.0 để quy đổi về thang 0-1.
+//                    //Trong Java, nếu bạn viết sc.a / 255 (số nguyên chia số nguyên), kết quả sẽ bị làm tròn xuống.
+//                    //Việc thêm .0 biến nó thành phép chia số thực (double), giúp giữ lại phần thập phân (ví dụ 0.5) để hiển thị độ mờ chính xác.
+//                }
+//            }
 
             // --- BƯỚC 3: Vẽ xe (vẽ một HÌNH TAM GIÁC CÂN hướng mũi nhọn lên trên.)
             double screenX = converter.toScreenX(simX);
             double screenY = converter.toScreenY(simY);
+//            System.out.println("Map: (" + simX + "," + simY + ") -> Screen: (" + screenX + "," + screenY + ")");
 
-            double size = 10.0;
+            double size = 2;
             //Trong JavaFX, khi bạn tạo một Polygon (Đa giác), bạn cần cung cấp các cặp tọa độ (x, y) nối tiếp nhau. Tọa độ này tính từ tâm của chiếc xe (điểm 0,0).
             Polygon carShape = new Polygon();
             carShape.getPoints().addAll(new Double[]{
@@ -401,9 +550,10 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
 
             carShape.setTranslateX(screenX); //Dịch chuyển" (Translate) chiếc xe từ gốc (0,0) đến đúng vị trí thực tế trên bản đồ.
             carShape.setTranslateY(screenY);
-//            carShape.setRotate(angle);
-            carShape.setFill(carColor);
-            carShape.setStroke(Color.BLACK);
+            carShape.setRotate(angle);
+//            carShape.setFill(carColor); temporary shut down to see yellow cars
+            carShape.setFill(Color.YELLOW);
+//            carShape.setStroke(Color.BLACK);
             carShape.setStrokeWidth(1);
 
             // --- BƯỚC 4: LƯU TOÀN BỘ INFO VÀO USERDATA (Theo ý bạn) ---
@@ -440,8 +590,11 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
             });
 
             vehiclePane.getChildren().add(carShape);
+            System.out.println("Added vehicle: " + vehicleId);
 
         } catch (Exception e) {
+        	System.err.println("CRASHED while rendering car: " + vehicleId);
+            e.printStackTrace(); 
             continue;
         }
     }

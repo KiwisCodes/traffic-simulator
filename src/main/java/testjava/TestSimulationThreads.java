@@ -56,7 +56,7 @@ public class TestSimulationThreads {
                     System.out.println("[Consumer] Received frame:");
                     System.out.println("  Edges: " + frame.getEdges().keySet());
                     System.out.println("  Vehicles: " + frame.getVehicles().keySet());
-                    System.out.println("  TrafficLights: " + frame.getTrafficLights());
+//                    System.out.println("  TrafficLights: " + frame.getTrafficLights());
                     count++;
                     Thread.sleep(300); // simulate processing time
                 }

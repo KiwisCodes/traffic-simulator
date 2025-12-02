@@ -27,25 +27,58 @@ public class VehicleManager {
 		
 	}
 	
+//	public void step() {
+//		try {
+//			SumoCommand idListCommand = Vehicle.getIDList();
+//			
+//			Object response = this.sumoConnection.do_job_get(idListCommand);
+//			
+//			
+//			if (response instanceof SumoStringList) {
+//				SumoStringList idList = (SumoStringList) response;
+//				
+//				this.vehiclesIds = idList;
+//			}
+//			for(String id:this.vehiclesIds) System.out.print(id + " ");
+//			this.updateVehiclesInfo();
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//	}
+	
 	public void step() {
-		try {
-			SumoCommand idListCommand = Vehicle.getIDList();
-			
-			Object response = this.sumoConnection.do_job_get(idListCommand);
-			
-			if (response instanceof SumoStringList) {
-				SumoStringList idList = (SumoStringList) response;
-				
-				this.vehiclesIds = idList;
-//				System.out.println("yes vehicle id list"); delete this log later
-				
-			}
-			this.updateVehiclesInfo();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		//delete this later
-	}
+        // FIX 2: Check if connection is alive before talking to SUMO
+        if (this.sumoConnection.isClosed()) {
+        	System.out.println("did not step in vehicle");
+            return;
+        }
+
+        try {
+            SumoCommand idListCommand = Vehicle.getIDList();
+            Object response = this.sumoConnection.do_job_get(idListCommand);
+
+            if (response instanceof SumoStringList) {
+                SumoStringList idList = (SumoStringList) response;
+                this.vehiclesIds = idList;
+            } else {
+                // If we didn't get a list, clear our local list to be safe
+                this.vehiclesIds.clear();
+            }
+
+            // FIX 3: Clear old data so cars that left the map don't stay on screen
+            this.vehiclesData.clear(); 
+            
+//            for(String id:this.vehiclesIds) System.out.print(id + " ");
+            
+            // Now update the info for the current cars
+            this.updateVehiclesInfo();
+            
+
+        } catch (Exception e) {
+            System.err.println("Error in VehicleManager step: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 	
 	public void updateVehiclesInfo() {
 		
@@ -56,7 +89,6 @@ public class VehicleManager {
 				SumoCommand colorCommand = Vehicle.getColor(id);
 				Object colorResponse = this.sumoConnection.do_job_get(colorCommand);
 				vehicleAttributes.put("Color", colorResponse);
-				
 				SumoCommand posCommand = Vehicle.getPosition(id);
 				Object posResponse = this.sumoConnection.do_job_get(posCommand);
 				vehicleAttributes.put("Position", posResponse);
@@ -65,15 +97,23 @@ public class VehicleManager {
 				Object speedResponse = this.sumoConnection.do_job_get(speedCommand);
 				vehicleAttributes.put("Speed", speedResponse);
 				
+				//Hung added
+				SumoCommand angleCommand = Vehicle.getAngle(id);
+				Object angleResponse = this.sumoConnection.do_job_get(angleCommand);
+				vehicleAttributes.put("Angle", angleResponse);
+//				System.out.println("ID: " + id + "Color: " + String.valueOf(colorResponse));
+				
 				this.vehiclesData.put(id, vehicleAttributes);
 			} catch (Exception e) {
-				System.err.println("Error at Request from Vehicle " + id);
+//				System.err.println("Error at Request from Vehicle " + id);
+				System.err.println(e);
 			}
 		}
 	}
 	
 	public Map<String, Map<String, Object>> getVehiclesData() {
-		return this.vehiclesData;
+		System.out.println("Return vehicle map");
+		return new HashMap<>(this.vehiclesData);
 	}
 	
 	public void injectVehicle(String vehicleId, String typeId, String routeId, int r, int g, int b, int a, double Speed) {
