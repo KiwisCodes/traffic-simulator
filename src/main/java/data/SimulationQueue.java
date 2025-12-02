@@ -22,5 +22,9 @@ public class SimulationQueue {
     public SimulationState pollState() throws InterruptedException{
     	return queue.poll();
     }
+    
+    public void offerState(SimulationState frame) throws InterruptedException{
+    	queue.offer(frame);
+    }
 
 }

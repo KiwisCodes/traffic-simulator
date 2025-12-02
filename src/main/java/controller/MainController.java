@@ -140,7 +140,7 @@ public class MainController {
     
     // Flags
     private volatile boolean isSimulationRunning = false;
-    private static int currentStep = 0;
+    private volatile static int currentStep = 0;
 
     // --- Visualization ---
     // Map to track visual shapes: ID -> Shape (Used to update positions)
@@ -181,15 +181,7 @@ public class MainController {
     public void initialize() {
         log("Controller initialized. Waiting to start...");
         this.mapInteractionHandler = new MapInteractionHandler(rightMapStackPane, rightMapPaneGroup);
-        
-//        Rectangle clipRect = new Rectangle();
-//
-//        // 2. Bind the clip to the StackPane (which acts as the "Center" window)
-//        clipRect.widthProperty().bind(rightMapStackPane.widthProperty());
-//        clipRect.heightProperty().bind(rightMapStackPane.heightProperty());
-//
-//        // 3. Apply the clip
-//        rightMapStackPane.setClip(clipRect);
+
         
         
     }
@@ -211,6 +203,19 @@ public class MainController {
             // Now that we are connected, we have map bounds. Setup converter.
             MapManager mapManager = this.simManager.getMapManager();
             this.renderer.setConverter(mapManager);
+            
+            
+            double viewWidth = rightMapStackPane.getWidth();
+            double viewHeight = rightMapStackPane.getHeight();
+
+            // Fallback: If the window just opened, size might be 0. Guess a size.
+            if (viewWidth == 0) viewWidth = 1400;
+            if (viewHeight == 0) viewHeight = 900;
+
+            // This calculates Scale AND the Offset needed to center it
+//            this.renderer.getConverter().autoFit(viewWidth, viewHeight);
+            
+            
             this.converter = this.renderer.getConverter();
 //            this.mapInteractionHandler.centerMap(this.lanePane);
             
@@ -249,16 +254,18 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 	         this.lanePane.getChildren().clear(); //temporary shut down to see yellow cars
 	         this.lanePane.getChildren().add(lanesGroup);
 	         
+//	         this.mapInteractionHandler.centerMap(this.lanePane);// the java wait for 1 more frame before calculating the size of the lanePane, so init is 0x0
+	         
 //	         Platform.runLater(() -> {
-//	        	 this.mapInteractionHandler.centerMap(lanesGroup);
+//	        	 this.mapInteractionHandler.centerMap(lanePane);
 //	        	 
 //	         });
 	         
 	         // This guarantees the sidebar is drawn last (on top)
-	         topHbox.toFront();
-	         leftControlPanel.toFront();
-//	         // If you have a log area at the bottom, bring that to front too
-	          bottomLogArea.toFront();
+//	         topHbox.toFront();
+//	         leftControlPanel.toFront();
+//////	         // If you have a log area at the bottom, bring that to front too
+//	          bottomLogArea.toFront();
 	          
 	         
 	
@@ -270,10 +277,17 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
             threadPool.submit(() -> {
                 log("Simulation Thread Started.");
                 while (isSimulationRunning) {
+                	
+                	if(this.simManager.getConnection().isClosed()) {
+                		log("Connection lost, stopping loop");
+                		break;
+                	}
+                	
                     try {
                         // 1. Step physics (Thread-Safe)
                         this.simManager.step(); 
-                        this.queue.putState(this.simManager.getState());
+//                        this.queue.putState(this.simManager.getState());// when click stop, the queue is doing put, but interrupted -> error
+                        this.queue.offerState(this.simManager.getState());// by this we dont get interrupted;
                         currentStep++;
                         log("Current Step: " + currentStep);
                         // 2. Throttle speed (e.g., 100ms per step)
@@ -338,7 +352,7 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 			if(simulationState == null) return;
 			log("Took state");
 			this.renderer.renderVehicles(vehiclePane, simulationState.getVehicles());
-			this.vehiclePane.toFront();
+//			this.vehiclePane.toFront();
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

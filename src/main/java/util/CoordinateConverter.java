@@ -44,13 +44,13 @@ public class CoordinateConverter {
 
     public double toScreenX(double sumoX) {
         // (WorldPos - WorldOrigin) * Zoom + PanOffset
-        return (sumoX - mapMinX) * scale + offsetX + padding;
+        return (sumoX - mapMinX) * scale + offsetX;
     }
 
     public double toScreenY(double sumoY) {
         // (WorldCeiling - WorldPos) * Zoom + PanOffset
         // This handles the Flip automatically
-        return (mapMaxY - sumoY) * scale + offsetY + padding;
+        return (mapMaxY - sumoY) * scale + offsetY;
     }
 
     // Helper for Point objects
@@ -64,11 +64,11 @@ public class CoordinateConverter {
     // ---------------------------------------------------------
 
     public double toSumoX(double screenX) {
-        return ((screenX - padding - offsetX) / scale) + mapMinX;
+        return ((screenX - offsetX) / scale) + mapMinX;
     }
 
     public double toSumoY(double screenY) {
-        return mapMaxY - ((screenY - padding - offsetY) / scale);
+        return mapMaxY - ((screenY - offsetY) / scale);
     }
 
     // ---------------------------------------------------------
@@ -85,29 +85,37 @@ public class CoordinateConverter {
 
  // Add this method to dynamically set the canvas size
     public void autoFit(double paneWidth, double paneHeight) {
-	     // 1. Calculate the width/height of the SUMO map
-	     double mapW = this.mapWidth;
-	     double mapH = this.mapHeight;
-	
-	     // 2. Determine the scales required to fit width and height
-	     // We subtract padding * 2 to leave room on edges
-	     double scaleX = (paneWidth - (padding * 2)) / mapW;
-	     double scaleY = (paneHeight - (padding * 2)) / mapH;
-	
-	     // 3. Choose the smaller scale (so the whole map fits)
-	     this.scale = Math.min(scaleX, scaleY);
-	
-	     // 4. Center the map
-	     // Calculate how much space is left empty
-	     double usedWidth = mapW * scale;
-	     double usedHeight = mapH * scale;
-	
-	     // Center offset
-	     this.offsetX = (paneWidth - usedWidth) / 2;
-	     this.offsetY = (paneHeight - usedHeight) / 2;
-	     
-	     System.out.println("Map Scaled to: " + this.scale);
-    }	
+        // 1. SAFETY CHECK: If window size is invalid, use a default
+        if (paneWidth <= padding * 2 || paneHeight <= padding * 2) {
+            System.out.println("Window not ready yet. Using default size.");
+            paneWidth = 1000;  // Default fallback width
+            paneHeight = 800;  // Default fallback height
+        }
+
+        double mapW = this.mapWidth;
+        double mapH = this.mapHeight;
+
+        // 2. Prevent Divide by Zero if map failed to load
+        if (mapW <= 0 || mapH <= 0) {
+            System.err.println("Map dimensions are zero! Cannot auto-fit.");
+            return; 
+        }
+
+        // 3. Calculate Scale
+        double scaleX = (paneWidth - (padding * 2)) / mapW;
+        double scaleY = (paneHeight - (padding * 2)) / mapH;
+
+        this.scale = Math.min(scaleX, scaleY);
+        
+        // 4. Calculate Center Offsets
+        double usedWidth = mapW * scale;
+        double usedHeight = mapH * scale;
+
+        this.offsetX = (paneWidth - usedWidth) / 2;
+        this.offsetY = (paneHeight - usedHeight) / 2;
+        
+        System.out.println("AutoFit Calculated -> Scale: " + this.scale + " OffsetX: " + offsetX + " OffsetY: " + offsetY);
+   }
 
     public void zoom(double factor) {
         this.scale *= factor;

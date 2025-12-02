@@ -160,8 +160,8 @@ public class MapInteractionHandler {
         System.out.println("   Math says move Y by: " + String.format("%.2f", deltaY));
 
         // --- 5. YOUR MANUAL ADJUSTMENT (For comparison) ---
-        double manualX = deltaX - 800; 
-        double manualY = deltaY - 1500;
+        double manualX = deltaX; 
+        double manualY = deltaY;
         System.out.println("YOUR ADJUSTMENT APPLIED:");
         System.out.println("   Final X: " + String.format("%.2f", manualX));
         System.out.println("   Final Y: " + String.format("%.2f", manualY));

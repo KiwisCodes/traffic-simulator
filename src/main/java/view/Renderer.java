@@ -254,6 +254,7 @@ public class Renderer {
                 Shape laneShape = createLaneShape(laneId, connection, onLaneClick); //(Helper Method call)
                 // Hàm laneShape sẽ lấy ID và connection đến Sumo để hỏi Sumo là hình dáng của cái vật mang ID này là gì để trả về.
                 //Như vậy cụ thể lúc này biến laneShape sẽ nhận một cái Polyline - đường gấp khúc
+
          
                 if (laneShape != null) { //Null Check
                     staticGroup.getChildren().add(laneShape); 
@@ -313,10 +314,10 @@ public class Renderer {
                 // 3. Thêm điểm này vào đường gấp khúc (Polyline)
                 lanePolyline.getPoints().addAll(screenX, screenY);
             }
-
+            double laneWidth = (double) connection.do_job_get(Lane.getWidth(laneId));
             // 4. Style cho đường (Màu sắc, độ dày)
             lanePolyline.setStroke(Color.GRAY); // Màu đường nhựa
-            lanePolyline.setStrokeWidth(4.0);   // Độ rộng đường (pixel) - có thể chỉnh theo zoom nếu muốn xịn
+            lanePolyline.setStrokeWidth(laneWidth);   // Độ rộng đường (pixel) - có thể chỉnh theo zoom nếu muốn xịn
             lanePolyline.setStrokeLineCap(StrokeLineCap.ROUND);
             
             // Lưu ID vào UserData để sau này click vào biết là đường nào
@@ -328,7 +329,7 @@ public class Renderer {
                 lanePolyline.setStroke(Color.LIGHTGRAY);
                 lanePolyline.setCursor(Cursor.HAND);
             });
-
+            
             lanePolyline.setOnMouseExited(e -> {
                 lanePolyline.setEffect(null);
                 lanePolyline.setStroke(Color.GRAY);
@@ -538,9 +539,9 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
             // --- BƯỚC 3: Vẽ xe (vẽ một HÌNH TAM GIÁC CÂN hướng mũi nhọn lên trên.)
             double screenX = converter.toScreenX(simX);
             double screenY = converter.toScreenY(simY);
-            System.out.println("Map: (" + simX + "," + simY + ") -> Screen: (" + screenX + "," + screenY + ")");
+//            System.out.println("Map: (" + simX + "," + simY + ") -> Screen: (" + screenX + "," + screenY + ")");
 
-            double size = 5;
+            double size = 2;
             //Trong JavaFX, khi bạn tạo một Polygon (Đa giác), bạn cần cung cấp các cặp tọa độ (x, y) nối tiếp nhau. Tọa độ này tính từ tâm của chiếc xe (điểm 0,0).
             Polygon carShape = new Polygon();
             carShape.getPoints().addAll(new Double[]{
@@ -556,7 +557,7 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
             carShape.setRotate(angle);
 //            carShape.setFill(carColor); temporary shut down to see yellow cars
             carShape.setFill(Color.YELLOW);
-            carShape.setStroke(Color.BLACK);
+//            carShape.setStroke(Color.BLACK);
             carShape.setStrokeWidth(1);
 
             // --- BƯỚC 4: LƯU TOÀN BỘ INFO VÀO USERDATA (Theo ý bạn) ---
