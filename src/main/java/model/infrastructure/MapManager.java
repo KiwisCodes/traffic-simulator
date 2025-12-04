@@ -130,6 +130,6 @@ public class MapManager {
 			edges.put(edgeID, edge);
 			totalEdge++;
 		}
-		return edges;
+		return new HashMap<>(edges);
 	}
 }

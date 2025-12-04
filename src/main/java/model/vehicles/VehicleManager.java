@@ -113,7 +113,7 @@ public class VehicleManager {
 	}
 	
 	public Map<String, Map<String, Object>> getVehiclesData() {
-		System.out.println("Return vehicle map");
+//		System.out.println("Return vehicle map");
 		return new HashMap<>(this.vehiclesData);
 	}
 	
