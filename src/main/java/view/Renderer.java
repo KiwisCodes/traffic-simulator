@@ -618,7 +618,12 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
             carShape.setTranslateY(screenY);
             carShape.setRotate(angle);
 //            carShape.setFill(carColor); temporary shut down to see yellow cars
-            carShape.setFill(Color.YELLOW);
+            if(vehicleId.contains("vehicle_")) {
+            	carShape.setFill(Color.RED);
+            }
+            else {
+            	carShape.setFill(Color.YELLOW);
+            }
 //            carShape.setStroke(Color.BLACK);
             carShape.setStrokeWidth(1);
 

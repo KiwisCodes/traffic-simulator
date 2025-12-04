@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 //--- PHẦN TẠO DỮ LIỆU GIẢ (MOCK DATA) ---
@@ -344,12 +345,17 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 	
 	         log("Static Map drawn (Separated Car/Bike lanes).");
             
+
 	         this.renderer.renderJunctions(
 	        	        this.simManager.getConnection(), 
 	        	        this.junctionPane,  // Truyền Pane vào cho Renderer tự vẽ
 	        	        juncId -> log("Selected Junction: " + juncId)
 	        	    );
             
+
+	 		AtomicBoolean injected = new AtomicBoolean(false);
+  
+
             // --- B. START THREAD 2: SIMULATION ENGINE ---
             threadPool.submit(() -> {
                 log("Simulation Thread Started.");
@@ -362,7 +368,16 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
                 	
                     try {
                         // 1. Step physics (Thread-Safe)
-                        this.simManager.step(); 
+                    	if(!injected.get()) {
+    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "66993637#0", "265499402#5");
+    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "9792393#0", "98428996#3");
+    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "627278688", "676073620#0");
+    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "66993637#0", "265499402#5");
+    						injected.set(true);
+    					}
+                        this.simManager.step();
+                        simManager.StressTest();
+
 //                        this.queue.putState(this.simManager.getState());// when click stop, the queue is doing put, but interrupted -> error
                         this.queue.offerState(this.simManager.getState());// by this we dont get interrupted;
                         currentStep++;

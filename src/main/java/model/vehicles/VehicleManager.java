@@ -10,6 +10,7 @@ import de.tudresden.sumo.objects.SumoStringList;
 import de.tudresden.sumo.util.SumoCommand;
 import de.tudresden.ws.container.SumoPosition2D;
 import it.polito.appeal.traci.SumoTraciConnection;
+import util.Util;
 
 public class VehicleManager {
 	
@@ -118,7 +119,7 @@ public class VehicleManager {
 	
 	public void injectVehicle(String vehicleId, String typeId, String routeId, int r, int g, int b, int a, double Speed) {
 		try {
-			int depart = 0; // depart immediately
+			int depart = Util.getDepartTime(sumoConnection); // depart immediately
 			double pos = 0.0;
 			byte lane = (byte) 0;
 			

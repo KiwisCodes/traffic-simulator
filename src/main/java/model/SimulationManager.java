@@ -9,17 +9,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import model.infrastructure.*;
 import data.SimulationQueue;
 import model.infrastructure.*;
 import it.polito.appeal.traci.*;
 import de.tudresden.sumo.cmd.*;
+import de.tudresden.sumo.objects.SumoStage;
+import de.tudresden.sumo.objects.SumoStringList;
 // Import your vehicle classes
 import model.vehicles.VehicleManager;
 //import model.vehicles.Car;
 //import model.vehicles.Bus;
 //import model.vehicles.Truck;
 //import model.vehicles.Bike;
-
+import util.Util;
 // Import Infrastructure
 import model.infrastructure.MapManager;
 import model.infrastructure.TrafficlightManager;
@@ -37,7 +40,9 @@ public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
+
     private String sumoPath = "/Users/duongquytrang/sumo/bin/sumo"; 
+
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
@@ -54,7 +59,7 @@ public class SimulationManager {
 //    private final Object stateLock = new Object();
 
     // --- State Data (The "World") ---
-    private	Map<String, Map<String, String>> listOfEdges;
+    private	Map<String, EdgeObject> listOfEdges;
 	private	Map<String, Map<String, Object>> listOfVehicles;
 	private List<String> listOfTrafficlightIds;
 	private	Map<String, Map<String, String>> listOfLanes;
@@ -69,7 +74,9 @@ public class SimulationManager {
     
 //    private SimulationQueue queue;
     private SimulationState simulationState;
-	private static int routeCounter = 0;
+//	private static int routeCounter = 0;
+    private static int vehicleCounter = 0;
+	private double standardSpeed = 3.6;
 	public boolean isRunning = false;
 
     // --- Constructor ---
@@ -214,6 +221,81 @@ public class SimulationManager {
         }
     }
 
+    /** HERE IS THE CODE OF INJECT VEHICLE, STRESSTESTING, FINDR ROUTE **/
+    public void InjectVehicle(String vehType, int r, int g, int b, int a, double Speed, String firstEdge, String lastEdge) {
+		try {
+			String routeID = "routes_" + vehicleCounter;			
+			SumoStringList edges = getRouteFromEdges(firstEdge, lastEdge, vehType);
+			if(edges == null || edges.size() == 0) {
+				System.out.println("ERROR: No path found for vehicle type " + vehType + 
+						" from edge " + firstEdge + " to edge " + lastEdge);
+				return;
+			}
+			sumoConnection.do_job_set(Route.add(routeID, edges));
+			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), vehType, routeID, r, g, b, a, Speed);
+		} catch (Exception e){
+			System.out.println(e);
+		}
+	}
+	
+	public void StressTest(int number) throws Exception {
+		int N = number;
+		String vehicleStringIDs = String.valueOf(sumoConnection.do_job_get(Vehicle.getIDList()));
+		List<String> vehicleIDs = Util.parseStringToList(vehicleStringIDs);
+		if(vehicleIDs == null || vehicleIDs.size() == 0){
+			System.out.println("LOG: PLEASE TRY AGAIN");
+			return;
+		}
+		List<String> randomVehicleIDs = Util.getRandomElementsWithReplacement(vehicleIDs, N);
+//		System.out.println(vehicleIDs);
+//        System.out.println("Original List Size: " + vehicleIDs.size());
+//        System.out.println("Sampled List (N=" + N + "): " + randomVehicleIDs);
+		for(int i = 0; i < N; i++) {
+			String routeID = "route_" + vehicleCounter;
+			SumoStringList edges =  (SumoStringList) sumoConnection.do_job_get(Vehicle.getRoute(randomVehicleIDs.get(i)));
+			sumoConnection.do_job_set(Route.add(routeID, edges));
+			
+			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), "DEFAULT_VEHTYPE", routeID, 0, 0, 0, 0, standardSpeed);
+		}
+	}
+	public void StressTest() throws Exception {
+		int N = 50;
+		String vehicleStringIDs = String.valueOf(sumoConnection.do_job_get(Vehicle.getIDList()));
+		List<String> vehicleIDs = Util.parseStringToList(vehicleStringIDs);
+		if(vehicleIDs == null || vehicleIDs.size() == 0){
+			System.out.println("LOG: PLEASE TRY AGAIN");
+			return;
+		}
+		List<String> randomVehicleIDs = Util.getRandomElementsWithReplacement(vehicleIDs, N);
+//		System.out.println(vehicleIDs);
+//        System.out.println("Original List Size: " + vehicleIDs.size());
+//        System.out.println("Sampled List (N=" + N + "): " + randomVehicleIDs);
+		for(int i = 0; i < N; i++) {
+			String routeID = "route_" + vehicleCounter;
+			SumoStringList edges =  (SumoStringList) sumoConnection.do_job_get(Vehicle.getRoute(randomVehicleIDs.get(i)));
+			sumoConnection.do_job_set(Route.add(routeID, edges));
+			
+			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), "DEFAULT_VEHTYPE", routeID, 0, 0, 0, 0, standardSpeed);
+		}
+	}
+	
+	public Map<String, EdgeObject> getListOfEdges() {
+		return listOfEdges;
+	};
+	
+	public Map<String, Map<String, Object>> getListOfVehicles() {
+		return listOfVehicles;
+	};
+	
+	public SumoStringList getRouteFromEdges(String firstEdge, String lastEdge, String vehType) throws Exception {
+		double offset = 5;
+		double currentTime = (double) sumoConnection.do_job_get(Simulation.getTime());
+		double depart = currentTime + offset;
+		int routingMode = 0;
+		SumoStage stage =  (SumoStage) sumoConnection.do_job_get(Simulation.findRoute(firstEdge, lastEdge, vehType, depart, routingMode));
+		SumoStringList edges = stage.edges;
+		return edges;
+	}
     /**
      * Helper: Talks to TraCI to get the list of current vehicles.
      * @return A fresh list of vehicle objects.
