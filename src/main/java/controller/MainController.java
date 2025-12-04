@@ -56,9 +56,6 @@ import data.SimulationQueue;
 import data.SimulationState;
 
 public class MainController {
-	
-	@FXML private HBox topHbox;
-
     // --- FXML View Elements ---
     @FXML private ScrollPane leftControlPanel;
 //    @FXML private ScrollPane mapScrollPane;
@@ -77,6 +74,12 @@ public class MainController {
     @FXML private TextField vehicleSpeedField;
     @FXML private Button setVehicleColorButton;
     @FXML private TextField vehicleColorField;
+    @FXML private TitledPane injectionPane;       // Khung chứa chức năng thêm xe
+    @FXML private RadioButton carRadio;           // Nút chọn Ô tô
+    @FXML private RadioButton bikeRadio;          // Nút chọn Xe đạp
+    @FXML private ToggleGroup vehicleTypeGroup;   // Nhóm nút chọn (để biết cái nào đang active)
+    @FXML private TextField firstEdgeField;       // Ô chứa ID điểm xuất phát
+    @FXML private TextField secondEdgeField;      // Ô chứa ID điểm đích
    
 
     // Traffic Light Actions
@@ -101,10 +104,10 @@ public class MainController {
     @FXML private Button stressTestButton;
 
     // Sumo-GUI Integration
-    @FXML private TextField pathToSumocfgFile;
-    @FXML private TextField pathToSumoGui; 
-    @FXML private Button insertSumocfgButton;
-    @FXML private Button startSumoGuiButton;
+    @FXML private TextField pathToSumocfgFileField;
+    @FXML private TextField pathToSumoGuiField; 
+    @FXML private Button loadSumoPathButton;
+    @FXML private Button loadSumoConfigButton;
 
     // Live Statistics
     @FXML private Label simStepLabel;
@@ -120,11 +123,13 @@ public class MainController {
     @FXML private Button exportPdfButton;
 
     // Map & Log
-//    @FXML private AnchorPane rightMapAnchorPane;
-    @FXML private AnchorPane mapAnchorPane;
-    @FXML private StackPane rightMapStackPane;
-    @FXML private Group rightMapPaneGroup;
+    @FXML private AnchorPane centerMapAnchorPane;
+    @FXML private StackPane centerMapStackPane;
+    @FXML private Group centerMapPaneGroup;
     @FXML private Pane vehiclePane;
+    @FXML private Pane carLanePane;      // Pane chứa đường ô tô
+    @FXML private Pane bikeLanePane;     // Pane chứa đường xe đạp
+    @FXML private ScrollPane bottomLogScrollPane;
  // --- THÊM DÒNG NÀY ---
     private MapManager mapManager; // Biến toàn cục để dùng ở mọi nơi
     // ---------------------
@@ -144,37 +149,21 @@ public class MainController {
     @FXML private Button resetViewButton;
     @FXML private ToggleButton toggle3DButton;
     @FXML private TitledPane bottomLogArea;
- // --- KHAI BÁO MỚI CHO TÍNH NĂNG TÁCH LANE ---
-    @FXML private Pane carLanePane;      // Pane chứa đường ô tô
-    @FXML private Pane bikeLanePane;     // Pane chứa đường xe đạp
- // --- KHAI BÁO CHO GIAO DIỆN CHỌN XE ---
-    @FXML private TitledPane injectionPane;       // Khung chứa chức năng thêm xe
-    @FXML private RadioButton carRadio;           // Nút chọn Ô tô
-    @FXML private RadioButton bikeRadio;          // Nút chọn Xe đạp
-    @FXML private ToggleGroup vehicleTypeGroup;   // Nhóm nút chọn (để biết cái nào đang active)
-    
-    @FXML private TextField firstEdgeField;       // Ô chứa ID điểm xuất phát
-    @FXML private TextField secondEdgeField;      // Ô chứa ID điểm đích
 
-    // --- Logic & State ---
+
+//    Logic & State
     private SimulationManager simManager;
     private Renderer renderer; 
-    private CoordinateConverter converter;
-    
-    
-    
-    // --- THREAD MANAGEMENT ---
-    // 1. UI Thread: Handled by JavaFX & AnimationTimer
+   
+//    Thread
     private AnimationTimer uiLoop; 
-    
-    // 2. Background Threads: Handled by ExecutorService
-    // Pool size 2: One for Simulation Engine, One for Statistics
     private ExecutorService threadPool; 
     private final int NUMBER_OF_THREADS = 2; 
     
-    // Flags
-    private volatile boolean isSimulationRunning = false;
+//    Flags
+    private volatile static boolean isSimulationRunning = false;
     private volatile static int currentStep = 0;
+    private volatile static boolean isPaused = false;
 
     // --- Visualization ---
     // Map to track visual shapes: ID -> Shape (Used to update positions)
@@ -183,31 +172,20 @@ public class MainController {
     private MapInteractionHandler mapInteractionHandler;
     private SimulationQueue queue;	
 
-    // Scaling constants
-    private final double PADDING = 50.0;
+//    private final double PADDING = 50.0;//we dont need this
     
     
     // --- Initialization ---
 
     public MainController() {
-        // 1. Initialize Model
     	this.queue = new SimulationQueue(1000);
-        this.simManager = new SimulationManager(queue); // Logic Engine
-        
-        // 2. Initialize View Helpers
-        this.converter = new CoordinateConverter(); // Math Helper
-        this.renderer = new Renderer(); // Visual Factory
-        
-        // 3. Initialize Thread Pool
+        this.simManager = new SimulationManager(queue);
+        this.renderer = new Renderer();
         this.threadPool = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
-        
-        // 4. Map related
-        
-        // 5. Data
         this.queue = new SimulationQueue(1000);
     }
     
-    // Main entry point if running standalone (optional)
+    // Main entry point if running stand alone (optional)
     public static void main(String[] args) {
         // JavaFX launching logic usually goes in MainGUI.java
     }
@@ -216,7 +194,7 @@ public class MainController {
     public void initialize() {
     	
         log("Controller initialized. Waiting to start...");
-        this.mapInteractionHandler = new MapInteractionHandler(rightMapStackPane, rightMapPaneGroup);
+        this.mapInteractionHandler = new MapInteractionHandler(centerMapStackPane, centerMapPaneGroup);
         if (injectionPane != null) {
             injectionPane.expandedProperty().addListener((obs, wasExpanded, isNowExpanded) -> {
             	InteractWithVehicleInjectionDropMenu(); // Cập nhật ngay lập tức
@@ -235,85 +213,50 @@ public class MainController {
             });
         }
         
+        disableButtons(true);
     }
-
-    // --- ACTION METHODS ---
 
     @FXML 
     private void startSimulation() {
-    	
-    	
-        // 1. Connect to SUMO (Blocking Call - runs on UI thread currently, 
-        //    but acceptable for startup. Ideally, use Task<> for this too).
+        this.startButton.setDisable(true); // Prevent double start
         log("Attempting to connect to SUMO...");
         boolean connected = this.simManager.startConnection();
 
         if (connected) {
             log("Connected! Preparing simulation...");
             isSimulationRunning = true;
-
-            // --- A. SETUP MAP ---
-            // Now that we are connected, we have map bounds. Setup converter.
+            disableButtons(false);
             MapManager mapManager = this.simManager.getMapManager();
             this.renderer.setConverter(mapManager);
-            
-            
-            double viewWidth = rightMapStackPane.getWidth();
-            double viewHeight = rightMapStackPane.getHeight();
 
-            // Fallback: If the window just opened, size might be 0. Guess a size.
-            if (viewWidth == 0) viewWidth = 1400;
-            if (viewHeight == 0) viewHeight = 900;
-
-            // This calculates Scale AND the Offset needed to center it
-//            this.renderer.getConverter().autoFit(viewWidth, viewHeight);
-            
-
-            this.converter = this.renderer.getConverter();
-//            this.mapInteractionHandler.centerMap(this.lanePane);
-            
-            
-         // Define the action (What happens when clicked?)
-Consumer<String> laneClickHandler = (laneId) -> {
-                
+            Consumer<String> laneClickHandler = (laneId) -> {
+            	String edgeId = laneId.substring(0,laneId.indexOf("_"));                
+            	//we derive the edgeId from the the laneId
+            	//ex: laneId: 3242345_234 -> we just want the things before _ so we find the index of _ and take the substring before it
                 // 1. Kiểm tra xem Menu thêm xe có đang mở không?
                 if (injectionPane != null && injectionPane.isExpanded()) {
-                    
                     // 2. Logic điền lần lượt: Điền ô 1 -> Điền ô 2 -> Reset quay lại ô 1
                     if (firstEdgeField.getText().isEmpty()) {
-                        firstEdgeField.setText(laneId);
-                        log("Selected First Edge: " + laneId);
+                        firstEdgeField.setText(edgeId);
+                        log("Selected First Edge: " + edgeId);
                         
                     } else if (secondEdgeField.getText().isEmpty()) {
-                        secondEdgeField.setText(laneId);
-                        log("Selected Second Edge: " + laneId);
+                        secondEdgeField.setText(edgeId);
+                        log("Selected Second Edge: " + edgeId);
                         
                     } else {
                         // Nếu cả 2 ô đã có dữ liệu, click lần nữa sẽ reset ô 1 thành đường mới chọn
-                        firstEdgeField.setText(laneId);
+                        firstEdgeField.setText(edgeId);
                         secondEdgeField.clear();
-                        log("🔄 Selected Another First Edge  " + laneId);
+                        log("Selected Another First Edge  " + edgeId);
                     }
                     
                 } else {
                     // Nếu menu đang đóng thì chỉ in log xem chơi
-                    log("Lane ID: " + laneId); 
+                    log("Edge ID: " + edgeId); 
                 }
             };
             
-            /*
-A Consumer<String> is a Java concept (introduced in Java 8) that lets you pass a block of code as if it were a variable.
-
-Think of it as a "Task" or a "Job Order".
-
-
-
-The Data: It expects one input (in this case, a String, which is your Lane ID).
-
-The Result: It returns nothing (void). It just "consumes" the data and does something with it.
-             */
-
-            // Pass this action to the renderer
          // 1. Gọi hàm vẽ phân loại (Render trực tiếp vào 2 Pane)
             this.renderer.renderLanes(
                 this.mapManager,                 // Dùng biến toàn cục này
@@ -327,23 +270,7 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
             // 2. Cài đặt trạng thái tương tác ban đầu
             // (Đảm bảo lúc mới Start, menu đang đóng thì cả 2 đường đều sáng/click được)
             InteractWithVehicleInjectionDropMenu();
-	         
-//	         this.mapInteractionHandler.centerMap(this.lanePane);// the java wait for 1 more frame before calculating the size of the lanePane, so init is 0x0
-	         
-//	         Platform.runLater(() -> {
-//	        	 this.mapInteractionHandler.centerMap(lanePane);
-//	        	 
-//	         });
-	         
-	         // This guarantees the sidebar is drawn last (on top)
-//	         topHbox.toFront();
-//	         leftControlPanel.toFront();
-//////	         // If you have a log area at the bottom, bring that to front too
-//	          bottomLogArea.toFront();
-	          
-	         
-	
-	         log("Static Map drawn (Separated Car/Bike lanes).");
+	         log("Static Map drawn (Separated Car/Bike lanes)");
             
 
 	         this.renderer.renderJunctions(
@@ -360,35 +287,32 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
             threadPool.submit(() -> {
                 log("Simulation Thread Started.");
                 while (isSimulationRunning) {
-                	
                 	if(this.simManager.getConnection().isClosed()) {
                 		log("Connection lost, stopping loop");
                 		break;
                 	}
-                	
+                	if(isPaused) {
+            			try {
+							Thread.sleep(100);
+						} catch (InterruptedException e) {
+							Thread.currentThread().interrupt();//this is needed when user hit stop when it is currently paused
+							e.printStackTrace();
+						}
+            			continue;
+                	}
                     try {
                         // 1. Step physics (Thread-Safe)
-                    	if(!injected.get()) {
-    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "66993637#0", "265499402#5");
-    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "9792393#0", "98428996#3");
-    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "627278688", "676073620#0");
-    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "66993637#0", "265499402#5");
-    						injected.set(true);
-    					}
+//                    	if(!injected.get()) {
+//    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "66993637#0", "265499402#5");
+//    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "9792393#0", "98428996#3");
+//    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "627278688", "676073620#0");
+//    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "66993637#0", "265499402#5");
+//    						injected.set(true);
+//    					}
                         this.simManager.step();
-                        simManager.StressTest();
-
-//                        this.queue.putState(this.simManager.getState());// when click stop, the queue is doing put, but interrupted -> error
-                        this.queue.offerState(this.simManager.getState());// by this we dont get interrupted;
+//                        simManager.StressTest();
+                        this.queue.offerState(this.simManager.getState());// by this we dont get interrupted, unlike putState
                         currentStep++;
-                        log("Current Step: " + currentStep);
-                        // 2. Throttle speed (e.g., 100ms per step)
-//                        Thread.sleep(100); 
-                        
-                        if(this.simManager.getConnection().isClosed()) {
-                        	log("Dead");
-                        	break;
-                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -404,18 +328,10 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 
             // --- D. START THREAD 1: UI RENDERING ---
             startUiLoop();
-            
-            startButton.setDisable(true); // Prevent double start
         } else {
             log("Failed to connect to SUMO.");
         }
-        
-        //startUiLoop();
     }
-    
-    /**
-     * Starts the JavaFX AnimationTimer (60 FPS) to draw vehicles.
-     */
     private void startUiLoop() {
         uiLoop = new AnimationTimer() {
             @Override
@@ -428,44 +344,64 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 Why it's special: Code running inside handle() is executed on the JavaFX Application Thread. 
 This is the only thread allowed to modify UI elements (like moving a Circle or changing a Label text).
             	 */
-            	
-
-                
-
-                updateView();//maybe this should draw everything;
-
-            	
+                updateView();//maybe this should draw everything;	
             }
         };
         uiLoop.start();
         log("Đã khởi động Animation Loop.");
     }
 
-    /**
-     * Updates the visual elements based on the latest Model snapshot.
-     */
     private void updateView() {
 
     	SimulationState simulationState;
 		try {
 			simulationState = this.queue.pollState();
 			if(simulationState == null) return;
-			log("Took state");
+			
 			this.renderer.renderVehicles(vehiclePane, simulationState.getVehicles());
-//			this.vehiclePane.toFront();
+			int currentVehicleCount = simulationState.getVehicles().size();
+			updateCurrentStep();
+			updateCurrentVehicleCount(currentVehicleCount);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.err.print(e.getMessage());
 		}
     }
     
     // --- HELPER: Logging ---
     private void log(String message) {
         System.out.println(message);
+        
+        // Check if the label exists before attempting UI updates
         if (logLabel != null) {
-            // Ensure UI u	pdate happens on UI thread (important if called from background threads)
-            Platform.runLater(() -> logLabel.setText(message + "\n" + logLabel.getText()));
+            
+            // Ensure all UI updates happen on the JavaFX Application Thread
+            Platform.runLater(() -> {
+                
+                // 1. Append the new message to the existing log text
+                logLabel.setText(message + "\n" + logLabel.getText());
+                
+                // 2. Set the vertical scroll value to 1.0 (the bottom)
+                // We must check if the ScrollPane exists before setting the value
+                if (this.bottomLogScrollPane != null) {
+                    this.bottomLogScrollPane.setVvalue(1.0);
+                }
+            });
         }
+    }
+    
+    private void updateCurrentStep() {
+    	System.out.println(currentStep);
+    	if(simStepLabel != null) {
+    		simStepLabel.setText("" + currentStep);
+    	}
+    }
+    
+    private void updateCurrentVehicleCount(int currentVehicleCount) {
+    	System.out.println(currentVehicleCount);
+    	if(vehicleCountLabel != null) {
+    		vehicleCountLabel.setText("" + currentVehicleCount);
+    	}
     }
     
     private void InteractWithVehicleInjectionDropMenu() {
@@ -522,113 +458,83 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
         }
     }
     
-    private long dummyStep = 0; // Biến đếm để tạo chuyển động
-
-    private Map<String, Map<String, Object>> generateFakeVehicleData() {
-        Map<String, Map<String, Object>> allVehicles = new HashMap<>();
-        
-        double baseX = 0;
-        double baseY = 0;
-
-        // 1. [QUAN TRỌNG] Lấy tọa độ gốc của bản đồ thật
-        if (this.mapManager != null) {
-            baseX = this.mapManager.getMinX();
-            baseY = this.mapManager.getMinY();
-            // System.out.println("Gốc bản đồ thật tại: " + baseX + ", " + baseY);
-        }
-
-        // --- XE 1 (Đỏ) ---
-        Map<String, Object> car1 = new HashMap<>();
-        
-        // 2. CỘNG BASEX VÀO ĐỂ XE NHẢY VÀO TRONG MAP
-        double x1 = baseX + 100 + (dummyStep * 5) % 1000; 
-        double y1 = baseY + 200; 
-        
-        SumoPosition2D pos1 = new SumoPosition2D();
-        pos1.x = x1;
-        pos1.y = y1;
-        
-        car1.put("Position", pos1);
-        car1.put("Color", new SumoColor(255, 0, 0, 255)); 
-        car1.put("Angle", 90.0);
-        
-        allVehicles.put("fake_car_red", car1);
-
-        // --- XE 2 (Xanh) ---
-        Map<String, Object> car2 = new HashMap<>();
-        double x2 = baseX + 500;
-        double y2 = baseY + 100 + (dummyStep * 5) % 800;
-        
-        SumoPosition2D pos2 = new SumoPosition2D();
-        pos2.x = x2;
-        pos2.y = y2;
-        
-        car2.put("Position", pos2);
-        car2.put("Color", new SumoColor(0, 255, 0, 255));
-        car2.put("Angle", 180.0);
-        
-        allVehicles.put("fake_car_green", car2);
-        
-        dummyStep++;
-        return allVehicles;
+    private void disableButtons(boolean state) {
+    	this.pauseButton.setDisable(state);
+        this.stepButton.setDisable(state);
+        this.injectVehicleButton.setDisable(state);
+        this.showChartsButton.setDisable(state);
+        this.exportCsvButton.setDisable(state);
+        this.stressTestButton.setDisable(state);
     }
-    
-    
-    
-    //this function does not work
-//    private void centerAndFitMap() {
-//        Platform.runLater(() -> {
-//            // 1. Get the actual size of the Map Content
-//            var mapBounds = rightMapPaneGroup.getLayoutBounds();
-//            double mapWidth = mapBounds.getWidth();
-//            double mapHeight = mapBounds.getHeight();
-//            
-//            // 2. Get the size of the Window (StackPane)
-//            double windowWidth = rightMapStackPane.getWidth();
-//            double windowHeight = rightMapStackPane.getHeight();
-//
-//            if (windowWidth == 0 || windowHeight == 0) return;
-//
-//            // 3. Calculate Scale to FIT
-//            double scaleX = windowWidth / mapWidth;
-//            double scaleY = windowHeight / mapHeight;
-//            
-//            // Use the smaller scale so it fits entirely (with 90% padding)
-//            double scaleFactor = Math.min(scaleX, scaleY) * 0.90;
-//
-//            // 4. Calculate the Center of the Map (This is your Pivot)
-//            double pivotX = mapBounds.getMinX() + (mapWidth / 2);
-//            double pivotY = mapBounds.getMinY() + (mapHeight / 2);
-//
-//            // 5. Create the Scale Transform with the Pivot
-//            // Constructor: Scale(x, y, pivotX, pivotY)
-//            Scale scaleTransform = new Scale(scaleFactor, scaleFactor, pivotX, pivotY);
-//
-//            // 6. Apply the Transform
-//            rightMapPaneGroup.getTransforms().clear(); // Clear previous zooms
-//            rightMapPaneGroup.getTransforms().add(scaleTransform);
-//            
-//            // 7. Reset Translations (Let StackPane handle the centering)
-//            // Because the StackPane automatically centers its children, and we just 
-//            // scaled the child around its own center, it should snap perfectly to the middle.
-//            rightMapPaneGroup.setTranslateX(0);
-//            rightMapPaneGroup.setTranslateY(0);
-//
-//            log("Map Centered. Scale: " + String.format("%.4f", scaleFactor));
-//        });
-//    }
 
-    // --- Placeholder Action Methods ---
     @FXML private void pauseSimulation() {
-        // Toggle flag, handle pause logic
+    	if(pauseButton == null) return;
+    	isPaused = !isPaused;
+    	if(isPaused == true) {
+    		log("Simulation Paused");
+			pauseButton.setText("Resume");
+    	}
+    	else {
+    		log("Resume Simulation");
+    		pauseButton.setText("⏸ Pause");
+    	}
     }
-    @FXML private void stepSimulation() {}
-    @FXML private void injectVehicle() {}
+    @FXML private void stepSimulation() {
+    	if(!isPaused) {
+    		log("Please pause the simulation first");
+    		return;
+    	}
+    	
+    	this.simManager.step();
+    	currentStep++;
+    	SimulationState newSimulationState = this.simManager.getState();
+    	try {
+			this.queue.offerState(newSimulationState);
+			log("Step Forward -> " + currentStep);
+		} catch (InterruptedException e) {
+			log("Error stepping: " + e.getMessage());
+			e.printStackTrace();
+		}
+    	
+    }
+    
+    @FXML private void loadSumoPath() {
+    	if(this.simManager.setSumoBinary(this.pathToSumoGuiField)) {
+    		log("Successfully set path to sumo or sumo-gui");
+    		this.loadSumoPathButton.setDisable(true);
+    	}
+    	else {
+    		log("Set sumo or sumo-gui path fail");
+    	}
+    }
+    
+    @FXML private void injectVehicle() {
+    	if(this.firstEdgeField.getText().isEmpty() || this.secondEdgeField.getText().isEmpty()) {
+    		log("Please choose 2 edges please");
+    		return;
+    	}
+    	
+    	String firstEdgeId = this.firstEdgeField.getText();
+    	String secondEdgeId = this.secondEdgeField.getText();
+    	String vehicleType = null;
+    	if(this.carRadio.isSelected()) vehicleType = "DEFAULT_VEHTYPE";
+    	else if(this.bikeRadio.isSelected()) vehicleType = "DEFAULT_BIKETYPE";
+    	this.simManager.InjectVehicle(vehicleType, 255, 255, 255, 1, 3.6, firstEdgeId, secondEdgeId);
+    	log("Injected vehicle");
+    }
     @FXML private void startSumoGUI() {}
     @FXML private void insertSumoConfigFile() {}
     @FXML private void applyFilter() {}
     @FXML private void clearFilter() {}
-    @FXML private void runStressTest() {}
+    @FXML private void runStressTest() {
+    	try {
+			this.simManager.StressTest();
+			log("Default Stress Test with 50 random cars with random Routes");
+		} catch (Exception e) {
+			System.err.print(e.getMessage());
+			e.printStackTrace();
+		}
+    }
     
     
     

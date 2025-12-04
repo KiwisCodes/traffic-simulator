@@ -9,10 +9,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import controller.MainController;
 import model.infrastructure.*;
 import data.SimulationQueue;
 import model.infrastructure.*;
 import it.polito.appeal.traci.*;
+import javafx.scene.control.TextField;
 import de.tudresden.sumo.cmd.*;
 import de.tudresden.sumo.objects.SumoStage;
 import de.tudresden.sumo.objects.SumoStringList;
@@ -40,9 +42,7 @@ public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
-
-    private String sumoPath = "/Users/duongquytrang/sumo/bin/sumo"; 
-
+    private String sumoPath = "/Users/apple/sumo/bin/sumo"; 
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
@@ -51,12 +51,6 @@ public class SimulationManager {
 
     // --- TraCI Connection ---
     private SumoTraciConnection sumoConnection;
-
-    // --- THREAD SYNCHRONIZATION LOCK ---
-    // This object acts as a "key". Only one thread can hold this key at a time.
-    // We use it to prevent the GUI from reading the vehicle list while the 
-    // Simulation thread is deleting/adding to it.
-//    private final Object stateLock = new Object();
 
     // --- State Data (The "World") ---
     private	Map<String, EdgeObject> listOfEdges;
@@ -82,9 +76,6 @@ public class SimulationManager {
     // --- Constructor ---
     public SimulationManager(SimulationQueue queue) {
     	this.sumoConnection = new SumoTraciConnection(sumoPath, sumoConfigFileName);
-//		this.mapManager = new MapManager(sumoConnection);
-//		this.vehicleManager = new VehicleManager(sumoConnection);
-//		this.trafficlightManager = new TrafficlightManager(sumoConnection);
     }
 
     // ====================================================================
@@ -123,15 +114,13 @@ public class SimulationManager {
             this.mapManager = new MapManager(sumoConnection);
             this.vehicleManager = new VehicleManager(sumoConnection);
     		this.trafficlightManager = new TrafficlightManager(sumoConnection);
-            // You would call methods here to populate mapManager using TraCI calls:
-            // loadStaticMapData(); (Implementation logic from previous chat)
             
-            System.out.println("✅ Connection established!");
+            System.out.println("Connection established!");
             this.isRunning = true;
             return true;
 
         } catch (Exception e) {
-            System.err.println("❌ Error starting SUMO: " + e.getMessage());
+            System.err.println("Error starting SUMO: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -189,8 +178,6 @@ public class SimulationManager {
      */
     public void step() {
         try {
-            // --- PHASE 1: Heavy Lifting (Network I/O) ---
-            // We do this OUTSIDE the lock so the GUI doesn't freeze waiting for TraCI.
             this.sumoConnection.do_timestep();
 //            System.out.println("just did time step");
             this.vehicleManager.step();
@@ -199,23 +186,7 @@ public class SimulationManager {
             										this.mapManager.getLaneIds());
             		
             
-            // Fetch new vehicle data into a TEMPORARY local list (not implemented yet)
-//            List<SumoVehicle> nextStepVehicles = fetchVehicleData(); 
-
-            // --- PHASE 2: Safe Swap (Memory Operation) ---
-            // We lock only for the split-second it takes to swap the reference.
-//            synchronized (stateLock) {
-//                this.activeVehicles = nextStepVehicles; // Atomic reference swap
-//                this.currentStep++;
-                
-//                 Update stats safely while we hold the lock
-//                if (statisticsManager != null) {
-//                    statisticsManager.updateStatistics(0, activeVehicles.size());
-//                }
-//            }
-            
         } catch (Exception e) {
-//            System.err.println("❌ Error during timestep " + currentStep);
             e.printStackTrace();
             stopSimulation(); 
         }
@@ -296,35 +267,6 @@ public class SimulationManager {
 		SumoStringList edges = stage.edges;
 		return edges;
 	}
-    /**
-     * Helper: Talks to TraCI to get the list of current vehicles.
-     * @return A fresh list of vehicle objects.
-     */
-//    private List<SumoVehicle> fetchVehicleData() throws Exception {
-//        List<SumoVehicle> newList = new ArrayList<>();
-//        
-//        // 1. Get IDs of all vehicles in the simulation right now
-//        List<String> currentIds = (List<String>) sumoConnection.do_job_get(Vehicle.getIDList());
-//        
-//        for (String id : currentIds) {
-//            // For simplification, we recreate objects to ensure fresh data.
-//            // In a production app, you would cache these and only update position.
-//            
-//            // Determine Type (Car/Bus/etc) - Mocking logic here for simplicity
-//            // String type = (String) sumoConnection.do_job_get(Vehicle.getTypeID(id));
-//            // For now, assume Car:
-//            SumoVehicle v = new Car(id); 
-//            
-//            // Get Position
-//            // de.tudresden.sumo.objects.SumoPosition2D pos = 
-//            //    (de.tudresden.sumo.objects.SumoPosition2D) sumoConnection.do_job_get(Vehicle.getPosition(id));
-//            
-//            // v.setPosition(pos);
-//            
-//            newList.add(v);
-//        }
-//        return newList;
-//    }
 
     public void stopSimulation() {
         this.isRunning = false;
@@ -334,67 +276,14 @@ public class SimulationManager {
         }
     }
 
-    // ====================================================================
-    // 3. THREAD-SAFE GETTERS (For the GUI Controller)
-    // ====================================================================
-
-    /**
-     * Returns a Safe SNAPSHOT of the active vehicles.
-     * The GUI can iterate over this list without crashing, even if the
-     * simulation thread updates the "real" list in the background.
-     */
-//    public List<VehicleManager> getActiveVehicles() {
-//        synchronized (stateLock) {
-///*
-//Synchornize keyword
-//synchronized (The Lock)
-//
-//What it does: It creates a mutex (mutual exclusion). Only one thread can execute a block of code protected by the same lock at a time.
-//
-//Analogy: A bathroom with a key. If Thread A is inside, Thread B must wait outside until A leaves.
-//
-//Use case: When you need to perform multiple operations that must happen together (atomic), 
-//like clearing a list and adding new items. 
-//If you don't lock, another thread might see the list empty in the middle of your update.
-// */
-//            if (activeVehicles == null) {
-//                return new ArrayList<>();
-//            }
-//            // Return a COPY (Snapshot)
-//            return new ArrayList<>(activeVehicles);
-//        }
-//        /*
-//
-//1. The Relationship between List and ArrayList
-//
-//List (The Interface): Think of List as a contract or a menu. 
-//It defines what you can do (add, remove, get item at index),
-//but it doesn't say how the data is stored in memory. It's an abstract concept.
-//
-//ArrayList (The Implementation): This is a specific class that fulfills the List contract. 
-//It stores data in a resizing array. It says, "I am a List, and I work by using an array internally."
-//
-//The Rule: Since ArrayList implements List, an ArrayList IS-A List. 
-//Therefore, any method that promises to return a List can legally return an ArrayList, a LinkedList, or any other list type.
-//         */
-//    }
-
-    
-//Change the below for traffic lights
-//    public List<SumoVehicle> getActiveVehicles() {
-//        synchronized (stateLock) {
-//            if (activeVehicles == null) {
-//                return new ArrayList<>();
-//            }
-//            // Return a COPY (Snapshot)
-//            return new ArrayList<>(activeVehicles);
-//        }
-//    }
-    
-//    public void setSimulationState() {
-//    	this.simulationState = new SimulationState(this.mapManager.getEdges(),
-//    											this.trafficlightManager.
-//    }
+    public boolean setSumoBinary(TextField textField) {
+    	String userSumoPath = textField.getText();
+    	if(userSumoPath != null && userSumoPath != "") {
+    		this.sumoPath = userSumoPath;
+    		return true;
+    	}
+    	return false;
+    }
     
 
     public StatisticsManager getStatisticsManager() { return statisticsManager; }

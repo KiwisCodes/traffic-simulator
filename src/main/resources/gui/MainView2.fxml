@@ -27,10 +27,10 @@
       
       <AnchorPane styleClass="map-background">
          <children>
-            <StackPane fx:id="rightMapStackPane" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <StackPane fx:id="centerMapStackPane" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                 <children>
-                    <AnchorPane fx:id="rightMapAnchorPane" />
-                    <Group fx:id="rightMapPaneGroup">
+                    <AnchorPane fx:id="centerMapAnchorPane" />
+                    <Group fx:id="centerMapPaneGroup">
                        <children>
                           <Pane fx:id="carLanePane" pickOnBounds="false" />
                           <Pane fx:id="mixedLanePane" pickOnBounds="false" />
@@ -97,18 +97,16 @@
                                           <Font name="System Bold" size="24.0" />
                                        </font>
                                     </Label>
-                                    
-                                    <Region prefHeight="5.0" />
 
                                     <VBox spacing="8.0">
                                        <children>
                                           <Label styleClass="section-header" text="1. CONFIGURATION" />
-                                          <TextField fx:id="pathToSumoGui" promptText="Path to sumo-gui..." />
-                                          <TextField fx:id="pathToSumocfgFile" promptText="Path to .sumocfg..." />
+                                          <TextField fx:id="pathToSumoGuiField" promptText="Path to sumo-gui/sumo" />
+                                          <TextField fx:id="pathToSumocfgFileField" promptText="Path to .sumocfg..." />
                                           <HBox spacing="8.0">
                                              <children>
-                                                <Button fx:id="insertSumocfgButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="Load" HBox.hgrow="ALWAYS" />
-                                                <Button fx:id="startSumoGuiButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="action-button" text="Launch SUMO" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="loadSumoPathButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="action-button" text="Load Sumo Path" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="loadSumoConfigButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="Load Map" HBox.hgrow="ALWAYS" />
                                              </children>
                                           </HBox>
                                        </children>
@@ -119,16 +117,23 @@
                                     <VBox spacing="8.0">
                                        <children>
                                           <Label styleClass="section-header" text="2. SIMULATION CONTROLS" />
+                                          <Button fx:id="startButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#startSimulation" styleClass="action-button" text="▶ Start">
+                                             <font>
+                                                <Font name="System Bold" size="13.0" />
+                                             </font></Button>
                                           <HBox spacing="8.0">
                                              <children>
-                                                <Button fx:id="startSimulation" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#startSimulation" styleClass="action-button" text="▶ Start" HBox.hgrow="ALWAYS" />
-                                                <Button fx:id="pauseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="⏸ Pause">
+                                                <Button fx:id="pauseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#pauseSimulation" styleClass="secondary-button" text="⏸ Pause" HBox.hgrow="ALWAYS">
                                                    <font>
                                                       <Font name="System Bold" size="13.0" />
                                                    </font></Button>
+                                                <Button fx:id="stepButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#stepSimulation" styleClass="secondary-button" text="Step Forward" HBox.hgrow="ALWAYS">
+                                                   <font>
+                                                      <Font name="System Bold" size="13.0" />
+                                                   </font>
+                                                </Button>
                                              </children>
                                           </HBox>
-                                          <Button fx:id="stepButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="Step Forward (+1)" />
                                        </children>
                                     </VBox>
 
@@ -158,9 +163,9 @@
                                                       <VBox prefHeight="0.0" prefWidth="275.0">
                                                          <children>
                                                             <Label text="Choose First Edge" />
-                                                            <TextField fx:id="firstEdgeField" promptText="First Edge ID" styleClass="read-only-field" editable="false"/>
+                                                            <TextField fx:id="firstEdgeField" editable="false" promptText="First Edge ID" styleClass="read-only-field" />
                                                             <Label text="Choose Second Edge" />
-                                                            <TextField fx:id="secondEdgeField" promptText="Second Edge ID" styleClass="read-only-field" editable="false"/>
+                                                            <TextField fx:id="secondEdgeField" editable="false" promptText="Second Edge ID" styleClass="read-only-field" />
                                                          </children>
                                                       </VBox>
                                                   
@@ -172,7 +177,7 @@
                                                      <TextField fx:id="vehicleColorField" promptText="Color (R,G,B)" HBox.hgrow="ALWAYS" />
                                                      <Button fx:id="setVehicleColorButton" styleClass="small-button" text="Set" />
                                                   </HBox>
-                                                  <Button fx:id="injectVehicleButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="action-button" text="INJECT VEHICLE" />
+                                                  <Button fx:id="injectVehicleButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#injectVehicle" styleClass="action-button" text="INJECT VEHICLE" />
                                                </children>
                                             </VBox>
                                           </content>
@@ -211,6 +216,56 @@
                                               </VBox>
                                            </content>
                                         </TitledPane>
+                                          <TitledPane fx:id="stressTestPane" text="Stress Test">
+                                             <content>
+                                                <VBox spacing="10.0">
+                                                   <children>
+                                                      <VBox spacing="5.0">
+                                                         <children>
+                                                            <Label style="-fx-font-size: 11px;" text="Select Vehicle Type:" textFill="#666666" />
+                                                            <HBox spacing="20.0">
+                                                               <children>
+                                                                  <RadioButton fx:id="carRadio1" selected="true" style="-fx-font-weight: bold;" text="Car ">
+                                                                     <toggleGroup>
+                                                                        <ToggleGroup fx:id="vehicleTypeGroup1" />
+                                                                     </toggleGroup>
+                                                                  </RadioButton>
+                                                                  <RadioButton fx:id="bikeRadio1" style="-fx-font-weight: bold;" text="Bicycle" toggleGroup="$vehicleTypeGroup1" />
+                                                               </children>
+                                                            </HBox>
+                                                         </children>
+                                                      </VBox>
+                                                      <VBox prefHeight="0.0" prefWidth="275.0">
+                                                         <children>
+                                                            <Label text="Choose First Edge" />
+                                                            <TextField fx:id="firstEdgeField1" editable="false" promptText="First Edge ID" styleClass="read-only-field" />
+                                                            <Label text="Choose Second Edge" />
+                                                            <TextField fx:id="secondEdgeField1" editable="false" promptText="Second Edge ID" styleClass="read-only-field" />
+                                                         </children>
+                                                      </VBox>
+                                                      <HBox spacing="5.0">
+                                                         <children>
+                                                            <TextField fx:id="vehicleSpeedField1" promptText="Speed (m/s)" HBox.hgrow="ALWAYS" />
+                                                            <Button fx:id="setVehicleSpeedButton1" styleClass="small-button" text="Set" />
+                                                         </children>
+                                                      </HBox>
+                                                      <HBox spacing="5.0">
+                                                         <children>
+                                                            <TextField fx:id="vehicleColorField1" promptText="Color (R,G,B)" HBox.hgrow="ALWAYS" />
+                                                            <Button fx:id="setVehicleColorButton1" styleClass="small-button" text="Set" />
+                                                         </children>
+                                                      </HBox>
+                                                      <HBox spacing="5.0">
+                                                         <children>
+                                                            <TextField fx:id="vehicleCountField" promptText="Number of vehicles" HBox.hgrow="ALWAYS" />
+                                                            <Button fx:id="setNumberOfVehiclesButton" styleClass="small-button" text="Set" />
+                                                         </children>
+                                                      </HBox>
+                                                      <Button fx:id="stressTestButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#runStressTest" styleClass="action-button" text="Stress Test" />
+                                                   </children>
+                                                </VBox>
+                                             </content>
+                                          </TitledPane>
                                       </panes>
                                     </Accordion>
                                  </children>
@@ -253,11 +308,19 @@
                               <Insets bottom="5.0" left="5.0" />
                            </VBox.margin>
                         </Label>
-                        <ScrollPane fx:id="bottomLog" fitToHeight="true" fitToWidth="true" prefHeight="150.0" style="-fx-background-color: transparent;">
-                           <content>
-                              <Label fx:id="logLabel" styleClass="log-text" text="&gt; Ready." wrapText="true" />
-                           </content>
-                        </ScrollPane>
+                        <VBox>
+                           <children>
+                              <ScrollPane fx:id="bottomLogScrollPane" fitToHeight="true" fitToWidth="true" prefHeight="150.0" style="-fx-background-color: transparent;">
+                                 <content>
+                                    <VBox>
+                                       <children>
+                                          <Label fx:id="logLabel" styleClass="log-text" text="&gt; Ready" wrapText="true" />
+                                       </children>
+                                    </VBox>
+                                 </content>
+                              </ScrollPane>
+                           </children>
+                        </VBox>
                      </children>
                   </VBox>
                </children>
