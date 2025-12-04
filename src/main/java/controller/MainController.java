@@ -20,6 +20,9 @@ import javafx.scene.transform.Scale;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.geometry.Pos; // import để căn giữa map
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ToggleGroup;
 
 // Model & View Imports
 import model.SimulationManager;
@@ -37,6 +40,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+
+//--- PHẦN TẠO DỮ LIỆU GIẢ (MOCK DATA) ---
+// Import các thư viện này
+import de.tudresden.sumo.objects.SumoColor;
+import java.util.HashMap;
+import de.tudresden.ws.container.SumoPosition2D; // Sửa lỗi SumoPosition2D
+import de.tudresden.sumo.objects.SumoColor;     // Sửa lỗi SumoColor (chắc chắn bạn sẽ bị tiếp theo)
+
+// Thêm để vẽ xe chuyển 
+import javafx.animation.AnimationTimer;
+import data.SimulationState;
 
 import data.SimulationQueue;
 import data.SimulationState;
@@ -63,6 +77,7 @@ public class MainController {
     @FXML private TextField vehicleSpeedField;
     @FXML private Button setVehicleColorButton;
     @FXML private TextField vehicleColorField;
+   
 
     // Traffic Light Actions
     @FXML private TextField trafficLightIdField;
@@ -110,25 +125,43 @@ public class MainController {
     @FXML private StackPane rightMapStackPane;
     @FXML private Group rightMapPaneGroup;
     @FXML private Pane vehiclePane;
+ // --- THÊM DÒNG NÀY ---
+    private MapManager mapManager; // Biến toàn cục để dùng ở mọi nơi
+    // ---------------------
     @FXML private Pane baseMapPane;
     @FXML private Pane lanePane;     // Static roads go here
     @FXML private Pane junctionPane;
+    @FXML private Pane trafficLightPane; // add vào để vẽ đèn giao thông
     @FXML private Pane routePane;
     @FXML private Pane carPane;      // Dynamic cars go here
     @FXML private Pane busPane;
     @FXML private Pane truckPane;
     @FXML private Pane bikePane;
+    @FXML private Pane mixedLanePane; // <--- THÊM MỚI
     @FXML private Label logLabel;
     @FXML private Button zoomInButton;
     @FXML private Button zoomOutButton;
     @FXML private Button resetViewButton;
     @FXML private ToggleButton toggle3DButton;
     @FXML private TitledPane bottomLogArea;
+ // --- KHAI BÁO MỚI CHO TÍNH NĂNG TÁCH LANE ---
+    @FXML private Pane carLanePane;      // Pane chứa đường ô tô
+    @FXML private Pane bikeLanePane;     // Pane chứa đường xe đạp
+ // --- KHAI BÁO CHO GIAO DIỆN CHỌN XE ---
+    @FXML private TitledPane injectionPane;       // Khung chứa chức năng thêm xe
+    @FXML private RadioButton carRadio;           // Nút chọn Ô tô
+    @FXML private RadioButton bikeRadio;          // Nút chọn Xe đạp
+    @FXML private ToggleGroup vehicleTypeGroup;   // Nhóm nút chọn (để biết cái nào đang active)
+    
+    @FXML private TextField firstEdgeField;       // Ô chứa ID điểm xuất phát
+    @FXML private TextField secondEdgeField;      // Ô chứa ID điểm đích
 
     // --- Logic & State ---
     private SimulationManager simManager;
     private Renderer renderer; 
     private CoordinateConverter converter;
+    
+    
     
     // --- THREAD MANAGEMENT ---
     // 1. UI Thread: Handled by JavaFX & AnimationTimer
@@ -152,6 +185,7 @@ public class MainController {
 
     // Scaling constants
     private final double PADDING = 50.0;
+    
     
     // --- Initialization ---
 
@@ -180,10 +214,26 @@ public class MainController {
 
     @FXML
     public void initialize() {
+    	
         log("Controller initialized. Waiting to start...");
         this.mapInteractionHandler = new MapInteractionHandler(rightMapStackPane, rightMapPaneGroup);
-
-        
+        if (injectionPane != null) {
+            injectionPane.expandedProperty().addListener((obs, wasExpanded, isNowExpanded) -> {
+            	InteractWithVehicleInjectionDropMenu(); // Cập nhật ngay lập tức
+                
+                // (Tùy chọn) Reset các ô text khi đóng lại cho sạch
+                if (!isNowExpanded) {
+                    if (firstEdgeField != null) firstEdgeField.clear();
+                    if (secondEdgeField != null) secondEdgeField.clear();
+                }
+            });
+        }
+     // --- 2. Lắng nghe việc CHỌN LOẠI XE (Car/Bike) ---
+        if (vehicleTypeGroup != null) {
+            vehicleTypeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            	InteractWithVehicleInjectionDropMenu(); // Cập nhật ngay lập tức
+            });
+        }
         
     }
 
@@ -191,6 +241,8 @@ public class MainController {
 
     @FXML 
     private void startSimulation() {
+    	
+    	
         // 1. Connect to SUMO (Blocking Call - runs on UI thread currently, 
         //    but acceptable for startup. Ideally, use Task<> for this too).
         log("Attempting to connect to SUMO...");
@@ -216,18 +268,37 @@ public class MainController {
             // This calculates Scale AND the Offset needed to center it
 //            this.renderer.getConverter().autoFit(viewWidth, viewHeight);
             
-            
+
             this.converter = this.renderer.getConverter();
 //            this.mapInteractionHandler.centerMap(this.lanePane);
             
             
          // Define the action (What happens when clicked?)
-            Consumer<String> laneClickHandler = (laneId) -> {
-                // Update your UI text fields
-                routeIdField.setText(laneId); 
-                stressEdgeField.setText(laneId);
-                filterEdgeField.setText(laneId);
-                log("User selected lane: " + laneId);
+Consumer<String> laneClickHandler = (laneId) -> {
+                
+                // 1. Kiểm tra xem Menu thêm xe có đang mở không?
+                if (injectionPane != null && injectionPane.isExpanded()) {
+                    
+                    // 2. Logic điền lần lượt: Điền ô 1 -> Điền ô 2 -> Reset quay lại ô 1
+                    if (firstEdgeField.getText().isEmpty()) {
+                        firstEdgeField.setText(laneId);
+                        log("Selected First Edge: " + laneId);
+                        
+                    } else if (secondEdgeField.getText().isEmpty()) {
+                        secondEdgeField.setText(laneId);
+                        log("Selected Second Edge: " + laneId);
+                        
+                    } else {
+                        // Nếu cả 2 ô đã có dữ liệu, click lần nữa sẽ reset ô 1 thành đường mới chọn
+                        firstEdgeField.setText(laneId);
+                        secondEdgeField.clear();
+                        log("🔄 Selected Another First Edge  " + laneId);
+                    }
+                    
+                } else {
+                    // Nếu menu đang đóng thì chỉ in log xem chơi
+                    log("Lane ID: " + laneId); 
+                }
             };
             
             /*
@@ -243,17 +314,19 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
              */
 
             // Pass this action to the renderer
-            Group lanesGroup = this.renderer.createLaneGroup(
-            	mapManager, 
+         // 1. Gọi hàm vẽ phân loại (Render trực tiếp vào 2 Pane)
+            this.renderer.renderLanes(
+                this.mapManager,                 // Dùng biến toàn cục này
                 this.simManager.getConnection(), 
-                laneClickHandler // <--- Passing the function here
+                this.carLanePane,                // Pane chứa đường ô tô
+                this.bikeLanePane,               // Pane chứa đường xe đạp
+                this.mixedLanePane,
+                laneClickHandler                 // Hàm xử lý click
             );
 	         
-	
-	         // 4. Add the lanes to the GUI Pane
-	         // We clear it first just in case, then add the new shapes
-	         this.lanePane.getChildren().clear(); //temporary shut down to see yellow cars
-	         this.lanePane.getChildren().add(lanesGroup);
+            // 2. Cài đặt trạng thái tương tác ban đầu
+            // (Đảm bảo lúc mới Start, menu đang đóng thì cả 2 đường đều sáng/click được)
+            InteractWithVehicleInjectionDropMenu();
 	         
 //	         this.mapInteractionHandler.centerMap(this.lanePane);// the java wait for 1 more frame before calculating the size of the lanePane, so init is 0x0
 	         
@@ -270,11 +343,19 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 	          
 	         
 	
-	         log("Static Map drawn with " + lanesGroup.getChildren().size() + " lanes.");
+	         log("Static Map drawn (Separated Car/Bike lanes).");
             
+
+	         this.renderer.renderJunctions(
+	        	        this.simManager.getConnection(), 
+	        	        this.junctionPane,  // Truyền Pane vào cho Renderer tự vẽ
+	        	        juncId -> log("Selected Junction: " + juncId)
+	        	    );
             
+
 	 		AtomicBoolean injected = new AtomicBoolean(false);
   
+
             // --- B. START THREAD 2: SIMULATION ENGINE ---
             threadPool.submit(() -> {
                 log("Simulation Thread Started.");
@@ -328,6 +409,8 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
         } else {
             log("Failed to connect to SUMO.");
         }
+        
+        //startUiLoop();
     }
     
     /**
@@ -346,17 +429,23 @@ Why it's special: Code running inside handle() is executed on the JavaFX Applica
 This is the only thread allowed to modify UI elements (like moving a Circle or changing a Label text).
             	 */
             	
+
+                
+
                 updateView();//maybe this should draw everything;
+
             	
             }
         };
         uiLoop.start();
+        log("Đã khởi động Animation Loop.");
     }
 
     /**
      * Updates the visual elements based on the latest Model snapshot.
      */
     private void updateView() {
+
     	SimulationState simulationState;
 		try {
 			simulationState = this.queue.pollState();
@@ -374,8 +463,39 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     private void log(String message) {
         System.out.println(message);
         if (logLabel != null) {
-            // Ensure UI update happens on UI thread (important if called from background threads)
+            // Ensure UI u	pdate happens on UI thread (important if called from background threads)
             Platform.runLater(() -> logLabel.setText(message + "\n" + logLabel.getText()));
+        }
+    }
+    
+    private void InteractWithVehicleInjectionDropMenu() {
+        // TRƯỜNG HỢP 1: Nếu Menu "Vehicle Injection" đang ĐÓNG
+        // -> Cho phép tương tác với TẤT CẢ (để người dùng soi map)
+        if (injectionPane == null || !injectionPane.isExpanded()) {
+            if (carLanePane != null) carLanePane.setMouseTransparent(false);
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(false);
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false);
+            return;
+        }
+
+        // TRƯỜNG HỢP 2: Nếu Menu đang MỞ -> Kiểm tra loại xe
+        boolean isBikeMode = bikeRadio.isSelected();
+
+        if (isBikeMode) {
+            // --- Đang chọn XE ĐẠP ---
+            // Đường Ô tô: Tắt tương tác (Không sáng)
+            if (carLanePane != null) carLanePane.setMouseTransparent(true); // tắt 
+            // Đường Xe đạp: Bật tương tác (Sáng)
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(false); // bật xe đạp
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false); // Bật Mixed
+            
+        } else {
+            // --- Đang chọn Ô TÔ ---
+            // Đường Ô tô: Bật tương tác (Sáng)
+            if (carLanePane != null) carLanePane.setMouseTransparent(false); //Bật car 
+            // Đường Xe đạp: Tắt tương tác (Không sáng)
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(true); //tắt bike
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false); // Bật Mixed
         }
     }
 
@@ -401,6 +521,59 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
             simManager.stopSimulation();
         }
     }
+    
+    private long dummyStep = 0; // Biến đếm để tạo chuyển động
+
+    private Map<String, Map<String, Object>> generateFakeVehicleData() {
+        Map<String, Map<String, Object>> allVehicles = new HashMap<>();
+        
+        double baseX = 0;
+        double baseY = 0;
+
+        // 1. [QUAN TRỌNG] Lấy tọa độ gốc của bản đồ thật
+        if (this.mapManager != null) {
+            baseX = this.mapManager.getMinX();
+            baseY = this.mapManager.getMinY();
+            // System.out.println("Gốc bản đồ thật tại: " + baseX + ", " + baseY);
+        }
+
+        // --- XE 1 (Đỏ) ---
+        Map<String, Object> car1 = new HashMap<>();
+        
+        // 2. CỘNG BASEX VÀO ĐỂ XE NHẢY VÀO TRONG MAP
+        double x1 = baseX + 100 + (dummyStep * 5) % 1000; 
+        double y1 = baseY + 200; 
+        
+        SumoPosition2D pos1 = new SumoPosition2D();
+        pos1.x = x1;
+        pos1.y = y1;
+        
+        car1.put("Position", pos1);
+        car1.put("Color", new SumoColor(255, 0, 0, 255)); 
+        car1.put("Angle", 90.0);
+        
+        allVehicles.put("fake_car_red", car1);
+
+        // --- XE 2 (Xanh) ---
+        Map<String, Object> car2 = new HashMap<>();
+        double x2 = baseX + 500;
+        double y2 = baseY + 100 + (dummyStep * 5) % 800;
+        
+        SumoPosition2D pos2 = new SumoPosition2D();
+        pos2.x = x2;
+        pos2.y = y2;
+        
+        car2.put("Position", pos2);
+        car2.put("Color", new SumoColor(0, 255, 0, 255));
+        car2.put("Angle", 180.0);
+        
+        allVehicles.put("fake_car_green", car2);
+        
+        dummyStep++;
+        return allVehicles;
+    }
+    
+    
     
     //this function does not work
 //    private void centerAndFitMap() {
@@ -456,4 +629,8 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     @FXML private void applyFilter() {}
     @FXML private void clearFilter() {}
     @FXML private void runStressTest() {}
+    
+    
+    
+    
 }
