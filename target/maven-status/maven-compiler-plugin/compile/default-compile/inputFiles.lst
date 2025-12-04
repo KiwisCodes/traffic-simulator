@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/ReportManager.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/view/Renderer.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/view/MainGUI.java
@@ -8,24 +7,8 @@
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/StatisticsManager.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/TrafficlightManager.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/testjava/TestSimulationThreads.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/MapManager.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationState.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/SimulationManager.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/vehicles/VehicleManager.java
-/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/MapManger.java
 /Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationQueue.java
-=======
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/vehicles/VehicleManager.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationQueue.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/view/MainGUI.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationState.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/StatisticsManager.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/util/CoordinateConverter.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/MapManager.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/view/Renderer.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/ReportManager.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/controller/MapInteractionHandler.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/testjava/TestSimulationThreads.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/TrafficlightManager.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/SimulationManager.java
-/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/controller/MainController.java
->>>>>>> main

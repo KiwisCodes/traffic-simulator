@@ -21,6 +21,8 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.geometry.Pos; // import để căn giữa map
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ToggleGroup;
 
 // Model & View Imports
 import model.SimulationManager;
@@ -74,6 +76,7 @@ public class MainController {
     @FXML private TextField vehicleSpeedField;
     @FXML private Button setVehicleColorButton;
     @FXML private TextField vehicleColorField;
+   
 
     // Traffic Light Actions
     @FXML private TextField trafficLightIdField;
@@ -133,19 +136,30 @@ public class MainController {
     @FXML private Pane busPane;
     @FXML private Pane truckPane;
     @FXML private Pane bikePane;
+    @FXML private Pane mixedLanePane; // <--- THÊM MỚI
     @FXML private Label logLabel;
     @FXML private Button zoomInButton;
     @FXML private Button zoomOutButton;
     @FXML private Button resetViewButton;
     @FXML private ToggleButton toggle3DButton;
     @FXML private TitledPane bottomLogArea;
+ // --- KHAI BÁO MỚI CHO TÍNH NĂNG TÁCH LANE ---
+    @FXML private Pane carLanePane;      // Pane chứa đường ô tô
+    @FXML private Pane bikeLanePane;     // Pane chứa đường xe đạp
+ // --- KHAI BÁO CHO GIAO DIỆN CHỌN XE ---
+    @FXML private TitledPane injectionPane;       // Khung chứa chức năng thêm xe
+    @FXML private RadioButton carRadio;           // Nút chọn Ô tô
+    @FXML private RadioButton bikeRadio;          // Nút chọn Xe đạp
+    @FXML private ToggleGroup vehicleTypeGroup;   // Nhóm nút chọn (để biết cái nào đang active)
     
-   
+    @FXML private TextField firstEdgeField;       // Ô chứa ID điểm xuất phát
+    @FXML private TextField secondEdgeField;      // Ô chứa ID điểm đích
 
     // --- Logic & State ---
     private SimulationManager simManager;
     private Renderer renderer; 
     private CoordinateConverter converter;
+    
     
     
     // --- THREAD MANAGEMENT ---
@@ -202,7 +216,23 @@ public class MainController {
     	
         log("Controller initialized. Waiting to start...");
         this.mapInteractionHandler = new MapInteractionHandler(rightMapStackPane, rightMapPaneGroup);
-        
+        if (injectionPane != null) {
+            injectionPane.expandedProperty().addListener((obs, wasExpanded, isNowExpanded) -> {
+            	InteractWithVehicleInjectionDropMenu(); // Cập nhật ngay lập tức
+                
+                // (Tùy chọn) Reset các ô text khi đóng lại cho sạch
+                if (!isNowExpanded) {
+                    if (firstEdgeField != null) firstEdgeField.clear();
+                    if (secondEdgeField != null) secondEdgeField.clear();
+                }
+            });
+        }
+     // --- 2. Lắng nghe việc CHỌN LOẠI XE (Car/Bike) ---
+        if (vehicleTypeGroup != null) {
+            vehicleTypeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            	InteractWithVehicleInjectionDropMenu(); // Cập nhật ngay lập tức
+            });
+        }
         
     }
 
@@ -243,13 +273,31 @@ public class MainController {
             
             
          // Define the action (What happens when clicked?)
-            Consumer<String> laneClickHandler = (laneId) -> {
-                // Update your UI text fields
-                routeIdField.setText(laneId); 
-                stressEdgeField.setText(laneId);
-                filterEdgeField.setText(laneId);
-                log("User selected lane: " + laneId); 
-                // Các lệnh setText này đều chỉ chạy khi lệnh accept() trong Renderer.java được kích hoạt.
+Consumer<String> laneClickHandler = (laneId) -> {
+                
+                // 1. Kiểm tra xem Menu thêm xe có đang mở không?
+                if (injectionPane != null && injectionPane.isExpanded()) {
+                    
+                    // 2. Logic điền lần lượt: Điền ô 1 -> Điền ô 2 -> Reset quay lại ô 1
+                    if (firstEdgeField.getText().isEmpty()) {
+                        firstEdgeField.setText(laneId);
+                        log("Selected First Edge: " + laneId);
+                        
+                    } else if (secondEdgeField.getText().isEmpty()) {
+                        secondEdgeField.setText(laneId);
+                        log("Selected Second Edge: " + laneId);
+                        
+                    } else {
+                        // Nếu cả 2 ô đã có dữ liệu, click lần nữa sẽ reset ô 1 thành đường mới chọn
+                        firstEdgeField.setText(laneId);
+                        secondEdgeField.clear();
+                        log("🔄 Selected Another First Edge  " + laneId);
+                    }
+                    
+                } else {
+                    // Nếu menu đang đóng thì chỉ in log xem chơi
+                    log("Lane ID: " + laneId); 
+                }
             };
             
             /*
@@ -265,17 +313,19 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
              */
 
             // Pass this action to the renderer
-            Group lanesGroup = this.renderer.createLaneGroup(
-            	mapManager, 
+         // 1. Gọi hàm vẽ phân loại (Render trực tiếp vào 2 Pane)
+            this.renderer.renderLanes(
+                this.mapManager,                 // Dùng biến toàn cục này
                 this.simManager.getConnection(), 
-                laneClickHandler // <--- Passing the function here
+                this.carLanePane,                // Pane chứa đường ô tô
+                this.bikeLanePane,               // Pane chứa đường xe đạp
+                this.mixedLanePane,
+                laneClickHandler                 // Hàm xử lý click
             );
 	         
-	
-	         // 4. Add the lanes to the GUI Pane
-	         // We clear it first just in case, then add the new shapes
-	         this.lanePane.getChildren().clear(); //temporary shut down to see yellow cars
-	         this.lanePane.getChildren().add(lanesGroup);
+            // 2. Cài đặt trạng thái tương tác ban đầu
+            // (Đảm bảo lúc mới Start, menu đang đóng thì cả 2 đường đều sáng/click được)
+            InteractWithVehicleInjectionDropMenu();
 	         
 //	         this.mapInteractionHandler.centerMap(this.lanePane);// the java wait for 1 more frame before calculating the size of the lanePane, so init is 0x0
 	         
@@ -292,9 +342,13 @@ The Result: It returns nothing (void). It just "consumes" the data and does some
 	          
 	         
 	
-	         log("Static Map drawn with " + lanesGroup.getChildren().size() + " lanes.");
+	         log("Static Map drawn (Separated Car/Bike lanes).");
             
-            
+	         this.renderer.renderJunctions(
+	        	        this.simManager.getConnection(), 
+	        	        this.junctionPane,  // Truyền Pane vào cho Renderer tự vẽ
+	        	        juncId -> log("Selected Junction: " + juncId)
+	        	    );
             
             // --- B. START THREAD 2: SIMULATION ENGINE ---
             threadPool.submit(() -> {
@@ -396,6 +450,37 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
         if (logLabel != null) {
             // Ensure UI u	pdate happens on UI thread (important if called from background threads)
             Platform.runLater(() -> logLabel.setText(message + "\n" + logLabel.getText()));
+        }
+    }
+    
+    private void InteractWithVehicleInjectionDropMenu() {
+        // TRƯỜNG HỢP 1: Nếu Menu "Vehicle Injection" đang ĐÓNG
+        // -> Cho phép tương tác với TẤT CẢ (để người dùng soi map)
+        if (injectionPane == null || !injectionPane.isExpanded()) {
+            if (carLanePane != null) carLanePane.setMouseTransparent(false);
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(false);
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false);
+            return;
+        }
+
+        // TRƯỜNG HỢP 2: Nếu Menu đang MỞ -> Kiểm tra loại xe
+        boolean isBikeMode = bikeRadio.isSelected();
+
+        if (isBikeMode) {
+            // --- Đang chọn XE ĐẠP ---
+            // Đường Ô tô: Tắt tương tác (Không sáng)
+            if (carLanePane != null) carLanePane.setMouseTransparent(true); // tắt 
+            // Đường Xe đạp: Bật tương tác (Sáng)
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(false); // bật xe đạp
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false); // Bật Mixed
+            
+        } else {
+            // --- Đang chọn Ô TÔ ---
+            // Đường Ô tô: Bật tương tác (Sáng)
+            if (carLanePane != null) carLanePane.setMouseTransparent(false); //Bật car 
+            // Đường Xe đạp: Tắt tương tác (Không sáng)
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(true); //tắt bike
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false); // Bật Mixed
         }
     }
 

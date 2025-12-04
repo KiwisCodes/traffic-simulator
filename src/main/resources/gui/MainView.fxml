@@ -310,6 +310,7 @@
                   <Pane fx:id="busPane" pickOnBounds="false" />
                   <!-- THIS IS WHERE CARS WILL BE DRAWN -->
                   <Pane fx:id="carPane" pickOnBounds="false" />
+                  <Pane fx:id="mixedLanePane" pickOnBounds="false" />
                   <Pane fx:id="bikePane" pickOnBounds="false" />
                   </children>
               </StackPane>
