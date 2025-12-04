@@ -1,3 +1,19 @@
+<<<<<<< HEAD
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/ReportManager.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/view/Renderer.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/view/MainGUI.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/util/CoordinateConverter.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/controller/MainController.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/controller/MapInteractionHandler.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/StatisticsManager.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/TrafficlightManager.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/testjava/TestSimulationThreads.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/MapManager.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationState.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/SimulationManager.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/model/vehicles/VehicleManager.java
+/Users/duongquytrang/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationQueue.java
+=======
 /Users/khoale/eclipse-workspace/traffic-simulator/src/main/java/controller/MainController.java
 /Users/khoale/eclipse-workspace/traffic-simulator/src/main/java/view/Renderer.java
 /Users/khoale/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/EdgeObject.java
@@ -14,3 +30,4 @@
 /Users/khoale/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationState.java
 /Users/khoale/eclipse-workspace/traffic-simulator/src/main/java/model/StatisticsManager.java
 /Users/khoale/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationQueue.java
+>>>>>>> main

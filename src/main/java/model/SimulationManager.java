@@ -40,7 +40,9 @@ public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
-    private String sumoPath = "/Users/khoale/sumo/bin/sumo"; 
+
+    private String sumoPath = "/Users/duongquytrang/sumo/bin/sumo"; 
+
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     

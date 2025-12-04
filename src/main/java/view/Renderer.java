@@ -6,6 +6,7 @@
 //import de.tudresden.sumo.cmd.Edge;
 //import de.tudresden.sumo.cmd.Lane;
 //import de.tudresden.sumo.objects.SumoGeometry;
+
 //import de.tudresden.sumo.objects.SumoPosition2D;
 //import it.polito.appeal.traci.SumoTraciConnection;
 //import javafx.scene.Cursor; // [NEW] Change cursor to hand
@@ -185,14 +186,12 @@ import javafx.scene.shape.Circle;          // Để vẽ hình tròn
 import de.tudresden.sumo.objects.SumoColor;     // Để hiểu màu sắc
 import javafx.scene.shape.Polygon;   // vẽ hình 
 import java.util.Map;
-
 public class Renderer {
 	
 	// Controller gọi hàm này để cài đặt kích thước bản đồ
     public void setConverter(MapManager mapManager) {
         this.converter.setBound(mapManager);
     }
-
     // Controller gọi hàm này để lấy converter ra tính toán AutoFit
     public CoordinateConverter getConverter() {
         return this.converter;
@@ -221,67 +220,82 @@ public class Renderer {
      * @param mapManager: chứa thông tin ID và biên (bounds)
      * @param connection: dùng để lấy hình dáng (Shape) chi tiết từ SUMO
      */
-    public Group createLaneGroup(MapManager mapManager, SumoTraciConnection connection,Consumer<String> onLaneClick) {
-        Group staticGroup = new Group();
-        
-        //Thứ tự đúng: setBound (biết map to bao nhiêu) -> autoFit (tính tỷ lệ thu nhỏ) -> Vòng lặp vẽ (dùng tỷ lệ đó để vẽ).
+    public void renderLanes(
+            MapManager mapManager, 
+            SumoTraciConnection connection, 
+            Pane carPane, 
+            Pane bikePane,
+            Pane mixedPane,
+            Consumer<String> onLaneClick
+    ) {
+        // 1. Xóa sạch bản vẽ cũ
+        carPane.getChildren().clear();
+        bikePane.getChildren().clear();
+        mixedPane.getChildren().clear();
 
-        // BƯỚC 1: Cài đặt biên cho Converter để tính toán tỉ lệ Zoom/Pan
-        // (Rất quan trọng: nếu không làm bước này, bản đồ có thể bị lệch hoặc sai tỉ lệ)
-        
+        // 2. Cập nhật tỷ lệ bản đồ (Auto Fit)
         if (mapManager != null) {
-            // 1. Nạp dữ liệu biên bản đồ (BẮT BUỘC có trước)
             this.converter.setBound(mapManager);
-
-            // 2. [QUAN TRỌNG] Tính toán tỷ lệ NGAY TẠI ĐÂY
-            // Dùng kích thước cửa sổ trừ hao đi một chút (vì có thanh menu bên trái)
-            // Ví dụ: Width lấy 75% cửa sổ, Height lấy 90% cửa sổ
-            double mapDisplayWidth = view.MainGUI.windowWidth * 0.6; 
-            double mapDisplayHeight = view.MainGUI.windowHeight * 0.80;
             
-//            this.converter.autoFit(mapDisplayWidth, mapDisplayHeight);
+            double mapDisplayWidth = view.MainGUI.windowWidth * 0.75; 
+            double mapDisplayHeight = view.MainGUI.windowHeight * 0.90;
+            
         }
+
+        System.out.println("Renderer: Bắt đầu vẽ làn đường...");
 
         try {
-            // BƯỚC 2: Vẽ các Làn đường (Lanes)
-            // Chúng ta lấy danh sách Lane ID từ MapManager (hoặc trực tiếp từ Connection)
-            // Lưu ý: MapManger của bạn đang return edgeIds trong hàm getLaneIds(), hãy cẩn thận check lại nhé.
-            // Ở đây mình ví dụ lấy trực tiếp từ TraCI cho chắc ăn:
             List<String> laneIds = (List<String>) connection.do_job_get(Lane.getIDList());
 
-            for (String laneId : laneIds) {            
-                // Gọi hàm phụ trợ để tạo hình cho từng Lane, ngoài ra truyền thêm cái hành động click vào
-                Shape laneShape = createLaneShape(laneId, connection, onLaneClick); //(Helper Method call)
-                // Hàm laneShape sẽ lấy ID và connection đến Sumo để hỏi Sumo là hình dáng của cái vật mang ID này là gì để trả về.
-                //Như vậy cụ thể lúc này biến laneShape sẽ nhận một cái Polyline - đường gấp khúc
+            for (String laneId : laneIds) {
+                // Bỏ qua lane nội bộ (ngã tư)
+                if (laneId.startsWith(":")) continue;
 
-         
-                if (laneShape != null) { //Null Check
-                    staticGroup.getChildren().add(laneShape); 
-                   //Nó thuộc về lớp javafx.scene.Parent (Lớp cha của Group, Pane, VBox...). 
-                   //Vì biến staticGroup của bạn là một đối tượng kiểu Group (mà Group là con của Parent), nên nó được thừa hưởng và sử dụng hàm này miễn phí.
-                   // một cái Group (Nhóm) không trực tiếp chứa các hình vẽ. Thay vào đó, nó quản lý một Danh sách nội bộ (gọi là ObservableList).
-                   //Hàm getChildren() là "cánh cửa" bắt buộc phải đi qua nếu bạn muốn thêm, xóa, hoặc đếm số lượng các hình vẽ đang nằm trong một Group. Nếu không gọi nó, bạn không thể thay đổi nội dung bên trong Group đó.
+                try {
+                    // Kiểm tra quyền truy cập: Lane này cho phép xe gì?
+                    List<String> allowedClasses = (List<String>) connection.do_job_get(Lane.getAllowed(laneId));
+                    
+                    
+                    // 1. Có được phép đi Xe đạp không?
+                 
+                    boolean allowBike = allowedClasses.contains("bicycle")| allowedClasses.isEmpty();
+                 // 2. Có được phép đi Ô tô không?
+                    // (Trong SUMO, ô tô con là "passenger". Nếu list rỗng nghĩa là cho phép tất cả -> cũng là có ô tô)
+                    boolean allowCar = allowedClasses.contains("passenger") || allowedClasses.isEmpty();
+                    
+                 // 3. [QUAN TRỌNG] CƠ CHẾ DỰ PHÒNG (Fallback)
+                    // Nếu một con đường lạ (bus, taxi, truck, delivery) không lọt vào danh sách trên,
+                    // ta mặc định ném nó vào pane Ô tô để nó HIỆN LÊN thay vì biến mất.
+                    if (!allowBike && !allowCar) {
+                        allowCar = true; 
+                    }
+                    Shape laneShape = createLaneShape(laneId, connection, onLaneClick);
+                    if (laneShape != null) {
+                        // CASE 1: Đường Hỗn Hợp (Cả 2 cùng đi được)
+                        if (allowBike && allowCar) { 
+                            mixedPane.getChildren().add(laneShape); // VÀO MIXED
+                        }
+                     // CASE 2: Chỉ cho Xe Đạp
+                        else if (allowBike) {
+                            bikePane.getChildren().add(laneShape); // VÀO BIKE
+                        }
+                        else {
+                            carPane.getChildren().add(laneShape); // VÀO CAR
+                        }
+                 
+                     
+                    }} catch (Exception e) {
+                	e.printStackTrace();
                 }
             }
-            // BƯỚC 3: Vẽ Ngã tư (Junctions)
-            List<String> junctionIds = mapManager.getJunctionIds();
-            for (String juncId : junctionIds) {
-                 Shape junctionShape = createJunctionShape(juncId, connection);
-                 if (junctionShape != null) {
-                     staticGroup.getChildren().add(junctionShape);
-                 }
-            }
-
+            System.out.println("Renderer: Vẽ xong Lane.");
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Lỗi khi render static map: " + e.getMessage());
         }
-        
-     
-
-        return staticGroup;
     }
+    
+    
+    
     private Shape createLaneShape(String laneId, SumoTraciConnection connection,Consumer<String> onLaneClick) {
     	//Consumer là một type đặc biệt, nó dùng để lưu các dòng code chứ không phải chỉ là bién int, char,... bình thường.  
     	// Ở đây như kiểu là bạn được add cái function onLaneClick của MainController.java vào cái hàm này của bạn
@@ -316,7 +330,7 @@ public class Renderer {
             }
             double laneWidth = (double) connection.do_job_get(Lane.getWidth(laneId));
             // 4. Style cho đường (Màu sắc, độ dày)
-            lanePolyline.setStroke(Color.GRAY); // Màu đường nhựa
+            lanePolyline.setStroke(Color.rgb(50, 50, 50)); // Màu đường nhựa
             lanePolyline.setStrokeWidth(laneWidth);   // Độ rộng đường (pixel) - có thể chỉnh theo zoom nếu muốn xịn
             lanePolyline.setStrokeLineCap(StrokeLineCap.ROUND);
             
@@ -329,10 +343,9 @@ public class Renderer {
                 lanePolyline.setStroke(Color.LIGHTGRAY);
                 lanePolyline.setCursor(Cursor.HAND);
             });
-            
             lanePolyline.setOnMouseExited(e -> {
                 lanePolyline.setEffect(null);
-                lanePolyline.setStroke(Color.GRAY);
+                lanePolyline.setStroke(Color.rgb(50, 50, 50)); // Trả về đúng màu gốc ban đầu
                 lanePolyline.setCursor(Cursor.DEFAULT);
             });
             
@@ -357,24 +370,73 @@ public class Renderer {
             return null; 
         }
     }
+    
+    public void renderJunctions(SumoTraciConnection connection, Pane junctionPane, Consumer<String> onJunctionClick) {
+        // 1. Tự dọn dẹp Pane trước khi vẽ
+        junctionPane.getChildren().clear();
+
+        try {
+            List<String> junctionIds = (List<String>) connection.do_job_get(Junction.getIDList());
+            
+            for (String juncId : junctionIds) {
+                // Bỏ qua ngã tư nội bộ
+                if (juncId.startsWith(":")) continue;
+
+                // Tạo hình (dùng lại hàm helper cũ của bạn)
+                Shape junctionShape = createJunctionShape(juncId, connection);
+                
+                if (junctionShape != null) {
+                    // Gắn sự kiện click
+                    junctionShape.setOnMouseClicked(e -> {
+                        if(onJunctionClick != null) onJunctionClick.accept(juncId);
+                    });
+                    
+                    // 2. Vẽ TRỰC TIẾP vào Pane (thay vì add vào Group)
+                    junctionPane.getChildren().add(junctionShape);
+                }
+            }
+            System.out.println("Renderer: Đã vẽ xong Junctions.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    
     private Shape createJunctionShape(String junctionId, SumoTraciConnection connection) {
         try {
-            // Lấy tọa độ tâm ngã tư
-            SumoPosition2D pos = (SumoPosition2D) connection.do_job_get(Junction.getPosition(junctionId));
-            
-            double screenX = converter.toScreenX(pos.x);
-            double screenY = converter.toScreenY(pos.y);
+        	SumoGeometry geometry = (SumoGeometry) connection.do_job_get(Junction.getShape(junctionId));
+        	if (geometry == null || geometry.coords.isEmpty()) {
+                return null; // Không có hình dáng thì bỏ qua
+            }
+        	// --- 2. Tạo một hình đa giác JavaFX (Polygon) ---
+            Polygon junctionShape = new Polygon();
+        	for (SumoPosition2D pos : geometry.coords) {
+                // 1. Lấy điểm tọa độ thực (Mét)
+                double realX = pos.x; 
+                double realY = pos.y;
 
-            // Vẽ một hình tròn nhỏ đại diện ngã tư
-            Circle junction = new Circle(screenX, screenY, 3.0); // Bán kính 3
-            junction.setFill(Color.DARKGRAY);
-            junction.setUserData(junctionId);
+                // 2. Chuyển sang tọa độ màn hình (Pixel)
+                double screenX = converter.toScreenX(realX);
+                double screenY = converter.toScreenY(realY);
+
+                // 3. Thêm điểm này vào đường gấp khúc (Polyline)
+                junctionShape.getPoints().addAll(screenX, screenY);
+            }
+        	
+        	junctionShape.setFill(Color.rgb(80, 80, 80)); // Màu xám đậm cho ngã tư
+            junctionShape.setStroke(Color.rgb(100, 100, 100)); // Viền
+            junctionShape.setStrokeWidth(0.5);
             
-            return junction;
+            junctionShape.setUserData(junctionId);
+
+            
+            return junctionShape;
         } catch (Exception e) {
             return null;
         }
     }
+    
+    
     
  // =================================================================================
     // PHẦN VẼ ĐÈN GIAO THÔNG (TRAFFIC LIGHTS)
@@ -608,4 +670,3 @@ public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> ve
         }
     }
 }}
-

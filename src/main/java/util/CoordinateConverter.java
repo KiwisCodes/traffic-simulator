@@ -85,6 +85,8 @@ public class CoordinateConverter {
 
  // Add this method to dynamically set the canvas size
     public void autoFit(double paneWidth, double paneHeight) {
+
+
         // 1. SAFETY CHECK: If window size is invalid, use a default
         if (paneWidth <= padding * 2 || paneHeight <= padding * 2) {
             System.out.println("Window not ready yet. Using default size.");
@@ -117,9 +119,12 @@ public class CoordinateConverter {
         System.out.println("AutoFit Calculated -> Scale: " + this.scale + " OffsetX: " + offsetX + " OffsetY: " + offsetY);
    }
 
+
     public void zoom(double factor) {
         this.scale *= factor;
     }
+    
+    
 
     public void setPan(double x, double y) {
         this.offsetX = x;

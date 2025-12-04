@@ -6,11 +6,13 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
@@ -30,7 +32,9 @@
                     <AnchorPane fx:id="rightMapAnchorPane" />
                     <Group fx:id="rightMapPaneGroup">
                        <children>
-                          <Pane fx:id="lanePane" pickOnBounds="false" />
+                          <Pane fx:id="carLanePane" pickOnBounds="false" />
+                          <Pane fx:id="mixedLanePane" pickOnBounds="false" />
+                          <Pane fx:id="bikeLanePane" pickOnBounds="false" />
                           <Pane fx:id="junctionPane" pickOnBounds="false" />
                           <Pane fx:id="routePane" />
                           <Pane fx:id="trafficLightPane" pickOnBounds="false" />
@@ -132,12 +136,33 @@
 
                                     <Accordion>
                                       <panes>
-                                        <TitledPane text="Vehicle Injection">
+                                        <TitledPane fx:id="injectionPane" text="Vehicle Injection">
                                           <content>
                                             <VBox spacing="10.0">
                                                <children>
-                                                  <TextField fx:id="vehicleIdField" promptText="Vehicle ID (e.g. car_1)" />
-                                                  <TextField fx:id="routeIdField" editable="false" promptText="Select Start &amp; End Lanes" styleClass="read-only-field" />
+                                                  <VBox spacing="5.0">
+													   <children>
+													      <Label style="-fx-font-size: 11px;" text="Select Vehicle Type:" textFill="#666666" />
+													      <HBox spacing="20.0">
+													         <children>
+													            <RadioButton fx:id="carRadio" selected="true" style="-fx-font-weight: bold;" text="Car ">
+													               <toggleGroup>
+													                  <javafx.scene.control.ToggleGroup fx:id="vehicleTypeGroup" />
+													               </toggleGroup>
+													            </RadioButton>
+													            <RadioButton fx:id="bikeRadio" style="-fx-font-weight: bold;" text="Bicycle" toggleGroup="$vehicleTypeGroup" />
+													         </children>
+													      </HBox>
+													   </children>
+													</VBox>
+                                                      <VBox prefHeight="0.0" prefWidth="275.0">
+                                                         <children>
+                                                            <Label text="Choose First Edge" />
+                                                            <TextField fx:id="firstEdgeField" promptText="First Edge ID" styleClass="read-only-field" editable="false"/>
+                                                            <Label text="Choose Second Edge" />
+                                                            <TextField fx:id="secondEdgeField" promptText="Second Edge ID" styleClass="read-only-field" editable="false"/>
+                                                         </children>
+                                                      </VBox>
                                                   
                                                   <HBox spacing="5.0">
                                                      <TextField fx:id="vehicleSpeedField" promptText="Speed (m/s)" HBox.hgrow="ALWAYS" />

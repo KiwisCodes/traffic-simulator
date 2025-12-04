@@ -293,7 +293,7 @@
          </right>
          <center>
               <!-- fx:id added here -->
-              <StackPane fx:id="rightMapStackPane" alignment="TOP_RIGHT" BorderPane.alignment="CENTER">
+              <StackPane fx:id="rightMapStackPane" alignment="CENTER" BorderPane.alignment="CENTER">
                   <children>
                   <Group fx:id="rightMapPaneGroup" StackPane.alignment="CENTER">
                      <children>
@@ -310,6 +310,7 @@
                   <Pane fx:id="busPane" pickOnBounds="false" />
                   <!-- THIS IS WHERE CARS WILL BE DRAWN -->
                   <Pane fx:id="carPane" pickOnBounds="false" />
+                  <Pane fx:id="mixedLanePane" pickOnBounds="false" />
                   <Pane fx:id="bikePane" pickOnBounds="false" />
                   </children>
               </StackPane>
