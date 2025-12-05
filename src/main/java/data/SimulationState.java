@@ -18,7 +18,8 @@ public class SimulationState {
 	*/
 
 	private final Map<String, EdgeObject> lastEdges;
-    private final Map<String, Map<String, Object>> lastVehicles;
+//	private final Map<String, LaneObject> lastLanes;
+    private final Map<String, Map<String, Object>> lastVehicles;//need to change this
     private final List<String> laneIdList; //we use this to draw all the lanes;
 //    private final List<String> lastTrafficLightIDs; commented all traffic light to test vehicle and edges/lanes
 //    private final Map<String, Map<String, String>> lastLanes;

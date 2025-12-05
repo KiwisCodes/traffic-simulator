@@ -3,9 +3,11 @@
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/view/MainGUI.java
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/data/SimulationState.java
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/StatisticsManager.java
+/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/JunctionObject.java
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/util/CoordinateConverter.java
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/EdgeObject.java
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/util/Util.java
+/Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/LaneObject.java
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/infrastructure/MapManager.java
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/view/Renderer.java
 /Users/apple/eclipse-workspace/traffic-simulator/src/main/java/model/ReportManager.java

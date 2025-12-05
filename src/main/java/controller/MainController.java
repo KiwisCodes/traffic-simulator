@@ -280,7 +280,7 @@ public class MainController {
 	        	    );
             
 
-	 		AtomicBoolean injected = new AtomicBoolean(false);
+//	 		AtomicBoolean injected = new AtomicBoolean(false);
   
 
             // --- B. START THREAD 2: SIMULATION ENGINE ---
@@ -301,15 +301,8 @@ public class MainController {
             			continue;
                 	}
                     try {
-                        // 1. Step physics (Thread-Safe)
-//                    	if(!injected.get()) {
-//    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "66993637#0", "265499402#5");
-//    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "9792393#0", "98428996#3");
-//    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "627278688", "676073620#0");
-//    						simManager.InjectVehicle( "DEFAULT_VEHTYPE", 255, 255, 255, 0, 3.6, "66993637#0", "265499402#5");
-//    						injected.set(true);
-//    					}
                         this.simManager.step();
+                        Thread.sleep(5);
 //                        simManager.StressTest();
                         this.queue.offerState(this.simManager.getState());// by this we dont get interrupted, unlike putState
                         currentStep++;
@@ -391,14 +384,14 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     }
     
     private void updateCurrentStep() {
-    	System.out.println(currentStep);
+//    	System.out.println(currentStep);
     	if(simStepLabel != null) {
     		simStepLabel.setText("" + currentStep);
     	}
     }
     
     private void updateCurrentVehicleCount(int currentVehicleCount) {
-    	System.out.println(currentVehicleCount);
+//    	System.out.println(currentVehicleCount);
     	if(vehicleCountLabel != null) {
     		vehicleCountLabel.setText("" + currentVehicleCount);
     	}
@@ -519,9 +512,24 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     	String vehicleType = null;
     	if(this.carRadio.isSelected()) vehicleType = "DEFAULT_VEHTYPE";
     	else if(this.bikeRadio.isSelected()) vehicleType = "DEFAULT_BIKETYPE";
-    	this.simManager.InjectVehicle(vehicleType, 255, 255, 255, 1, 3.6, firstEdgeId, secondEdgeId);
-    	log("Injected vehicle");
+    	if(this.simManager.InjectVehicle(vehicleType, 255, 255, 255, 1, 3.6, firstEdgeId, secondEdgeId)) {
+    		log("Injected vehicle");    		
+    	}
+    	else {
+    		log("Fail injecting vehicle");
+    	}
     }
+    
+    @FXML private void zoomIn() {
+    	this.mapInteractionHandler.handleZoomIn();
+    }
+    @FXML private void zoomOut() {
+    	this.mapInteractionHandler.handleZoomOut();
+    }
+    @FXML private void resetView() {
+    	this.mapInteractionHandler.handleResetView();
+    }
+    
     @FXML private void startSumoGUI() {}
     @FXML private void insertSumoConfigFile() {}
     @FXML private void applyFilter() {}

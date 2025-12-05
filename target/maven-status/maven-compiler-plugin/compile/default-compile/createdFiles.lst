@@ -4,7 +4,6 @@ util/CoordinateConverter.class
 controller/MapInteractionHandler.class
 data/SimulationState.class
 model/infrastructure/EdgeObject.class
-model/SimulationManager.class
 controller/MainController.class
 model/infrastructure/TrafficlightManager.class
 util/Util.class
