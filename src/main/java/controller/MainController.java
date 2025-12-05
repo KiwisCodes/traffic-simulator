@@ -195,7 +195,7 @@ public class MainController {
         this.simManager = new SimulationManager(queue);
         this.renderer = new Renderer();
         this.threadPool = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
-        this.queue = new SimulationQueue(1000);
+//        this.queue = new SimulationQueue(1000);
     }
     
     // Main entry point if running stand alone (optional)
@@ -382,10 +382,16 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 			Map<String, Map<String, Object>> statsData = convertStateToStatsFormat(simulationState);
 			this.statsManager.step(statsData, currentStep);
 			
+//			System.out.println(statsData);
+			
 			double avgSpeed = this.statsManager.avgVehiclesSpeed();
 			Map<String, Integer> density = this.statsManager.calculateVehicleDensity();
 			Map<String, Integer> travelTimeDist = this.statsManager.calculateTravelTimeDistribution(60);
-			
+
+//			System.out.println(avgSpeed);
+//			System.out.println(density);
+//			System.out.println(travelTimeDist);
+
 			this.chartWindow.updateData(currentStep, avgSpeed, density, travelTimeDist);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -654,9 +660,6 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     			Map<String, Integer> densityMap, Map<String, Integer> travelTimeMap) {
     		Platform.runLater(() -> {
     			speedSeries.getData().add(new XYChart.Data<>(currentStep, avgSpeed));
-//    			if (speedSeries.getData().size() > 100) {
-//    				speedSeries.getData().remove(0);
-//    			}
     			densitySeries.getData().clear();
     			for (Map.Entry<String, Integer> entry: densityMap.entrySet()) {
     				densitySeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));

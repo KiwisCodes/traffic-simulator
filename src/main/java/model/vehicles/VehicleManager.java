@@ -43,6 +43,7 @@ public class VehicleManager {
 				this.vehiclesIds = idList;
 				
 			}
+			this.vehiclesData = new HashMap<>();
 			this.updateVehiclesInfo();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -95,7 +96,7 @@ public class VehicleManager {
 	}
 	
 	public Map<String, Map<String, Object>> getVehiclesData() {
-		return this.vehiclesData;
+		return new HashMap<>(this.vehiclesData);
 	}
 	
 	public void injectVehicle(String vehicleId, String typeId, String routeId, int r, int g, int b, int a, double Speed) {

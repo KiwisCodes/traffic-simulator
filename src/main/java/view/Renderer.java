@@ -632,7 +632,7 @@ public class Renderer {
 	//            });
 	
 	            trafficLightPane.getChildren().add(lightGroup);
-	            System.out.println("Added traffic light: " + tl_link.get_link_index());
+//	            System.out.println("Added traffic light: " + tl_link.get_link_index());
 	
 	        } catch (Exception e) {
 	        	System.err.println("CRASHED while rendering traffic light: " + tl_link.get_link_index());
