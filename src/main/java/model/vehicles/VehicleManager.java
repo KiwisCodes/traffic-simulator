@@ -1,135 +1,116 @@
 package model.vehicles;
 
+import de.tudresden.sumo.cmd.Vehicle;
+
+import it.polito.appeal.traci.SumoTraciConnection;
+import de.tudresden.sumo.util.SumoCommand;
+import de.tudresden.sumo.objects.SumoStringList;
+import de.tudresden.sumo.objects.SumoColor;
+import de.tudresden.sumo.config.Constants;
+import de.tudresden.sumo.util.SumoCommand; 
+
+import de.tudresden.sumo.cmd.Vehicle;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.io.IOException;
 
-import de.tudresden.sumo.cmd.Vehicle;
-import de.tudresden.sumo.objects.SumoColor;
-import de.tudresden.sumo.objects.SumoStringList;
-import de.tudresden.sumo.util.SumoCommand;
-import de.tudresden.ws.container.SumoPosition2D;
-import it.polito.appeal.traci.SumoTraciConnection;
-import util.Util;
 
 public class VehicleManager {
 	
-	//why Map<String, Object> are they not String, if String then get rid of Object;
-	//changed all conn to sumoConnection
-	//changed all Cmd to Command
-	private SumoTraciConnection sumoConnection;
+	private SumoTraciConnection conn;
 	private List<String> vehiclesIds;
 	private Map<String, Map<String, Object>> vehiclesData;
 	
-	public VehicleManager(SumoTraciConnection sumoConnection) {
-		
-		this.sumoConnection = sumoConnection;
+	public VehicleManager(SumoTraciConnection connection) {
+		this.conn = connection;
 		this.vehiclesData = new HashMap<>();
 		
 	}
 	
-//	public void step() {
-//		try {
-//			SumoCommand idListCommand = Vehicle.getIDList();
-//			
-//			Object response = this.sumoConnection.do_job_get(idListCommand);
-//			
-//			
-//			if (response instanceof SumoStringList) {
-//				SumoStringList idList = (SumoStringList) response;
-//				
-//				this.vehiclesIds = idList;
-//			}
-//			for(String id:this.vehiclesIds) System.out.print(id + " ");
-//			this.updateVehiclesInfo();
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-//	}
 	
 	public void step() {
-        // FIX 2: Check if connection is alive before talking to SUMO
-        if (this.sumoConnection.isClosed()) {
-        	System.out.println("did not step in vehicle");
-            return;
-        }
-
-        try {
-            SumoCommand idListCommand = Vehicle.getIDList();
-            Object response = this.sumoConnection.do_job_get(idListCommand);
-
-            if (response instanceof SumoStringList) {
-                SumoStringList idList = (SumoStringList) response;
-                this.vehiclesIds = idList;
-            } else {
-                // If we didn't get a list, clear our local list to be safe
-                this.vehiclesIds.clear();
-            }
-
-            // FIX 3: Clear old data so cars that left the map don't stay on screen
-            this.vehiclesData.clear(); 
-            
-//            for(String id:this.vehiclesIds) System.out.print(id + " ");
-            
-            // Now update the info for the current cars
-            this.updateVehiclesInfo();
-            
-
-        } catch (Exception e) {
-            System.err.println("Error in VehicleManager step: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
+		try {
+			SumoCommand idListCmd = Vehicle.getIDList();
+			
+			Object response = this.conn.do_job_get(idListCmd);
+			
+			if (response instanceof SumoStringList) {
+				SumoStringList idList = (SumoStringList) response;
+				
+				this.vehiclesIds = idList;
+				
+			}
+			this.updateVehiclesInfo();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 	
-	public void updateVehiclesInfo() {
+	private void updateVehiclesInfo() {
 		
 		for (String id: this.vehiclesIds) {
 			Map<String, Object> vehicleAttributes = new HashMap<>();
 			
 			try {
-				SumoCommand colorCommand = Vehicle.getColor(id);
-				Object colorResponse = this.sumoConnection.do_job_get(colorCommand);
+				SumoCommand colorCmd = Vehicle.getColor(id);
+				Object colorResponse = this.conn.do_job_get(colorCmd);
 				vehicleAttributes.put("Color", colorResponse);
-				SumoCommand posCommand = Vehicle.getPosition(id);
-				Object posResponse = this.sumoConnection.do_job_get(posCommand);
+				
+				SumoCommand posCmd = Vehicle.getPosition(id);
+				Object posResponse = this.conn.do_job_get(posCmd);
 				vehicleAttributes.put("Position", posResponse);
 				
-				SumoCommand speedCommand = Vehicle.getSpeed(id);
-				Object speedResponse = this.sumoConnection.do_job_get(speedCommand);
+				SumoCommand speedCmd = Vehicle.getSpeed(id);
+				Object speedResponse = this.conn.do_job_get(speedCmd);
 				vehicleAttributes.put("Speed", speedResponse);
+				
+				SumoCommand edgeCmd = Vehicle.getRoadID(id);
+				Object edgeResponse = this.conn.do_job_get(edgeCmd);
+				vehicleAttributes.put("EdgeId", edgeResponse);
 				
 				//Hung added
 				SumoCommand angleCommand = Vehicle.getAngle(id);
-				Object angleResponse = this.sumoConnection.do_job_get(angleCommand);
+				Object angleResponse = this.conn.do_job_get(angleCommand);
 				vehicleAttributes.put("Angle", angleResponse);
-//				System.out.println("ID: " + id + "Color: " + String.valueOf(colorResponse));
+				
+				SumoCommand departureCmd = new SumoCommand(
+						Constants.CMD_GET_VEHICLE_VARIABLE,
+						Constants.VAR_DEPARTURE,
+						id,
+						Constants.RESPONSE_GET_VEHICLE_VARIABLE,
+						Constants.TYPE_DOUBLE
+				);
+				Object departureResponse = this.conn.do_job_get(departureCmd);
+				vehicleAttributes.put("Depart", departureResponse);
 				
 				this.vehiclesData.put(id, vehicleAttributes);
 			} catch (Exception e) {
-//				System.err.println("Error at Request from Vehicle " + id);
-				System.err.println(e);
+				System.err.println("Error at Request from Vehicle " + id);
+				e.printStackTrace();
 			}
 		}
 	}
 	
 	public Map<String, Map<String, Object>> getVehiclesData() {
-//		System.out.println("Return vehicle map");
-		return new HashMap<>(this.vehiclesData);
+		return this.vehiclesData;
 	}
 	
 	public void injectVehicle(String vehicleId, String typeId, String routeId, int r, int g, int b, int a, double Speed) {
 		try {
-			int depart = Util.getDepartTime(sumoConnection); // depart immediately
+			int depart = 0; // depart immediately
 			double pos = 0.0;
 			byte lane = (byte) 0;
 			
-			SumoCommand addCommand = Vehicle.add(vehicleId, typeId, routeId, depart, pos, Speed, lane);
-			this.sumoConnection.do_job_set(addCommand);
+			SumoCommand addCmd = Vehicle.add(vehicleId, typeId, routeId, depart, pos, Speed, lane);
+			this.conn.do_job_set(addCmd);
 			
 			SumoColor color = new SumoColor(r, g, b, a);
 			
-			SumoCommand setColorCommand = Vehicle.setColor(vehicleId, color);
-			this.sumoConnection.do_job_set(setColorCommand);
+			SumoCommand setColorCmd = Vehicle.setColor(vehicleId, color);
+			this.conn.do_job_set(setColorCmd);
 			System.out.println("Vehicle Injected: " + vehicleId);
 
 		} catch (Exception e) {
@@ -141,9 +122,9 @@ public class VehicleManager {
 	
 	public int getVehicleCount() {
 		try {
-			SumoCommand idCountCommand = Vehicle.getIDCount();
+			SumoCommand idCountCmd = Vehicle.getIDCount();
 			
-			Object response = this.sumoConnection.do_job_get(idCountCommand);
+			Object response = this.conn.do_job_get(idCountCmd);
 			
 			int vehicleCount = (Integer) response;
 			
@@ -180,9 +161,9 @@ public class VehicleManager {
 	
 	public void printIdList(int step) {
 		try {
-			SumoCommand idListCommand = Vehicle.getIDList();
+			SumoCommand idListCmd = Vehicle.getIDList();
 			
-			Object response = this.sumoConnection.do_job_get(idListCommand);
+			Object response = this.conn.do_job_get(idListCmd);
 			
 			if (response instanceof SumoStringList) {
 				SumoStringList idList = (SumoStringList) response;
@@ -198,7 +179,4 @@ public class VehicleManager {
 	}
 	
 	
-	public static void main(String[] args) {
-		
-	}
 }

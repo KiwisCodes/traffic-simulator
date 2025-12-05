@@ -39,8 +39,8 @@
                           <Pane fx:id="bikeLanePane" pickOnBounds="false" />
                           <Pane fx:id="junctionPane" pickOnBounds="false" />
                           <Pane fx:id="routePane" />
-                          <Pane fx:id="trafficLightPane" pickOnBounds="false" />
                           <Pane fx:id="vehiclePane" pickOnBounds="false" />
+                          <Pane fx:id="trafficLightPane" pickOnBounds="false" />
                        </children>
                     </Group>
                     <Pane fx:id="busPane" pickOnBounds="false" />
@@ -170,7 +170,9 @@
                                                             <TextField fx:id="secondEdgeField" editable="false" promptText="Second Edge ID" styleClass="read-only-field" />
                                                          </children>
                                                       </VBox>
-                                                      <ColorPicker maxWidth="1.7976931348623157E308" />
+                                                      <Label text="Choose Vehicle Color" />
+                                                      <ColorPicker fx:id="injectVehicleColorPicker" maxWidth="1.7976931348623157E308" />
+                                                      <Label text="Choose Vehicle Speed" />
                                                       <Slider />
                                                   
                                                   <HBox spacing="5.0">

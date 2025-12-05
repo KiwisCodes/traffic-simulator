@@ -24,8 +24,19 @@ import javafx.geometry.Pos; // import để căn giữa map
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ToggleGroup;
 
+//Charts
+import javafx.scene.Scene;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
+import javafx.stage.Stage;
+import java.util.Map;
+
 // Model & View Imports
 import model.SimulationManager;
+import model.StatisticsManager;
 import model.infrastructure.MapManager;
 import model.vehicles.VehicleManager;
 import view.Renderer;
@@ -153,7 +164,9 @@ public class MainController {
 
 //    Logic & State
     private SimulationManager simManager;
+    private StatisticsManager statsManager;
     private Renderer renderer; 
+    private ChartWindow chartWindow;
    
 //    Thread
     private AnimationTimer uiLoop; 
@@ -214,6 +227,13 @@ public class MainController {
         }
         
         disableButtons(true);
+        
+        this.statsManager = new StatisticsManager();
+        
+        this.chartWindow = new ChartWindow();
+        
+        showChartsButton.setOnAction(e -> this.chartWindow.show());
+        
     }
 
     @FXML 
@@ -302,7 +322,7 @@ public class MainController {
                 	}
                     try {
                         this.simManager.step();
-                        Thread.sleep(5);
+                        Thread.sleep(10);
 //                        simManager.StressTest();
                         this.queue.offerState(this.simManager.getState());// by this we dont get interrupted, unlike putState
                         currentStep++;
@@ -352,9 +372,21 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 			if(simulationState == null) return;
 			
 			this.renderer.renderVehicles(vehiclePane, simulationState.getVehicles());
+			this.renderer.renderTrafficLights(trafficLightPane, simulationState.getTrafficLights());
+			
 			int currentVehicleCount = simulationState.getVehicles().size();
 			updateCurrentStep();
 			updateCurrentVehicleCount(currentVehicleCount);
+			
+			//Khoi's
+			Map<String, Map<String, Object>> statsData = convertStateToStatsFormat(simulationState);
+			this.statsManager.step(statsData, currentStep);
+			
+			double avgSpeed = this.statsManager.avgVehiclesSpeed();
+			Map<String, Integer> density = this.statsManager.calculateVehicleDensity();
+			Map<String, Integer> travelTimeDist = this.statsManager.calculateTravelTimeDistribution(60);
+			
+			this.chartWindow.updateData(currentStep, avgSpeed, density, travelTimeDist);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			System.err.print(e.getMessage());
@@ -512,7 +544,7 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     	String vehicleType = null;
     	if(this.carRadio.isSelected()) vehicleType = "DEFAULT_VEHTYPE";
     	else if(this.bikeRadio.isSelected()) vehicleType = "DEFAULT_BIKETYPE";
-    	if(this.simManager.InjectVehicle(vehicleType, 255, 255, 255, 1, 3.6, firstEdgeId, secondEdgeId)) {
+    	if(this.simManager.InjectVehicle(vehicleType, 255, 255, 255, 1, 10, firstEdgeId, secondEdgeId)) {
     		log("Injected vehicle");    		
     	}
     	else {
@@ -544,6 +576,105 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 		}
     }
     
+    public class ChartWindow {
+    	private final Stage stage;
+    	
+    	private XYChart.Series<Number, Number> speedSeries;
+    	private LineChart<Number, Number> speedChart;
+    	
+    	private XYChart.Series<String, Number> densitySeries;
+    	private BarChart<String, Number> densityChart;
+    	
+    	private XYChart.Series<String, Number> travelTimeSeries;
+    	private BarChart<String, Number> travelTimeChart;
+    	
+    	public ChartWindow() {
+    		this.stage = new Stage();
+    		this.stage.setTitle("Live Simulation Statistics");
+    		
+    		initCharts();
+    		
+    		VBox layout = new VBox(10);
+    		layout.getChildren().addAll(speedChart, densityChart, travelTimeChart);
+    		
+    		Scene scene = new Scene(layout, 600, 900);
+    		stage.setScene(scene);
+    	}
+    	
+    	private void initCharts() {
+    		NumberAxis xAxisSpeed = new NumberAxis();
+    		xAxisSpeed.setLabel("Step");
+    		NumberAxis yAxisSpeed = new NumberAxis();
+    		yAxisSpeed.setLabel("Avg Speed (m/s)");
+    		
+    		speedChart = new LineChart<>(xAxisSpeed, yAxisSpeed);
+    		speedChart.setTitle("Average Network Speed");
+    		speedChart.setAnimated(false);
+    		
+    		speedSeries = new XYChart.Series<>();
+    		speedSeries.setName("Avg Speed");
+    		speedChart.getData().add(speedSeries);
+    		
+    		CategoryAxis xAxisDens = new CategoryAxis();
+    		xAxisDens.setLabel("Edge ID");
+    		NumberAxis yAxisDens = new NumberAxis();
+    		yAxisDens.setLabel("Count");
+    		
+    		densityChart = new BarChart<>(xAxisDens, yAxisDens);
+    		densityChart.setTitle("Vehicle Density per Edge");
+    		densityChart.setAnimated(false);
+    		
+    		densitySeries = new XYChart.Series<>();
+    		densitySeries.setName("Vehicles");
+    		densityChart.getData().add(densitySeries);
+    		
+    		CategoryAxis xAxisTime = new CategoryAxis();
+    		xAxisTime.setLabel("Travel Time Range (s)");
+    		NumberAxis yAxisTime = new NumberAxis();
+    		yAxisTime.setLabel("Number of Vehicles");
+    		
+    		travelTimeChart = new BarChart<>(xAxisTime, yAxisTime);
+    		travelTimeChart.setTitle("Travel Time Distribution");
+    		travelTimeChart.setAnimated(false);
+    		
+    		travelTimeSeries = new XYChart.Series<>();
+    		travelTimeSeries.setName("Frequency");
+    		travelTimeChart.getData().add(travelTimeSeries);
+    	}
+    	
+    	public void show() {
+    		if (!stage.isShowing()) {
+    			stage.show();
+    		} else {
+    			stage.toFront();
+    		}
+    	}
+    	
+    	public void updateData(int currentStep, double avgSpeed,
+    			Map<String, Integer> densityMap, Map<String, Integer> travelTimeMap) {
+    		Platform.runLater(() -> {
+    			speedSeries.getData().add(new XYChart.Data<>(currentStep, avgSpeed));
+//    			if (speedSeries.getData().size() > 100) {
+//    				speedSeries.getData().remove(0);
+//    			}
+    			densitySeries.getData().clear();
+    			for (Map.Entry<String, Integer> entry: densityMap.entrySet()) {
+    				densitySeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+    			}
+    			
+    			travelTimeSeries.getData().clear();
+    			for (Map.Entry<String, Integer> entry : travelTimeMap.entrySet()) {
+    				travelTimeSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+    			}
+    		});
+    	}
+    }
+    
+    private Map<String, Map<String, Object>> convertStateToStatsFormat(SimulationState state) {
+    	Map<String, Map<String, Object>> vehiclesData = new HashMap<>();
+    	vehiclesData = state.getVehicles();
+    	return vehiclesData;
+    }
     
     
     
