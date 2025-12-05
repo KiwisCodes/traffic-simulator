@@ -23,8 +23,9 @@ public class MapInteractionHandler {
     private double translateAnchorY;
 
     // Zoom settings
-    private static final double MAX_SCALE = 100.0;
+    private static final double MAX_SCALE = 75.0;
     private static final double MIN_SCALE = 0.1;
+    private static final double zoomFactor = 1.2;
 
     public MapInteractionHandler(Node inputNode, Node targetNode) {
         this.inputNode = inputNode;
@@ -100,76 +101,40 @@ public class MapInteractionHandler {
         });
     }
     
-    public void centerMap(Node contentBoundsNode) {
-        System.out.println("\n================== MAP CENTERING DEBUG LOG ==================");
-
-        // --- 1. LOG SCALE ---
-        double currentScaleX = targetNode.getScaleX();
-        double currentScaleY = targetNode.getScaleY();
-        System.out.println("CURRENT ZOOM SCALE: " + String.format("%.4f", currentScaleX));
-
-        // --- 2. GET CONTENT BOUNDS (The Roads) ---
-        var mapBounds = contentBoundsNode.getLayoutBounds();
-        double mapMinX = mapBounds.getMinX();
-        double mapMinY = mapBounds.getMinY();
-        double mapWidth = mapBounds.getWidth();
-        double mapHeight = mapBounds.getHeight();
-        double mapMaxX = mapBounds.getMaxX();
-        double mapMaxY = mapBounds.getMaxY();
-
-        System.out.println("MAP CONTENT BOUNDS (LanePane):");
-        System.out.println("   Min (Top-Left): (" + String.format("%.2f", mapMinX) + ", " + String.format("%.2f", mapMinY) + ")");
-        System.out.println("   Max (Bot-Right): (" + String.format("%.2f", mapMaxX) + ", " + String.format("%.2f", mapMaxY) + ")");
-        System.out.println("   Size: " + String.format("%.2f", mapWidth) + " x " + String.format("%.2f", mapHeight));
-
-        // CALCULATE MAP CENTER
-        double mapCenterX = mapMinX + (mapWidth / 2.0);
-        double mapCenterY = mapMinY + (mapHeight / 2.0);
-        System.out.println("   CALCULATED MAP CENTER: (" + String.format("%.2f", mapCenterX) + ", " + String.format("%.2f", mapCenterY) + ")");
-
-        // --- 3. GET VIEWPORT BOUNDS (The Screen) ---
-        double viewWidth = inputNode.getLayoutBounds().getWidth();
-        double viewHeight = inputNode.getLayoutBounds().getHeight();
+    public void handleZoomIn() {
+        double currentScaleX = this.targetNode.getScaleX();
+        double currentScaleY = this.targetNode.getScaleY();
         
-        // Safety check against the Scene size
-        if (inputNode.getScene() != null) {
-            double sceneHeight = inputNode.getScene().getHeight();
-            double sceneWidth = inputNode.getScene().getWidth();
-            // Log if we are capping the size
-            if (viewHeight > sceneHeight || viewWidth > sceneWidth) {
-                 System.out.println("   [NOTICE] StackPane is larger than Scene. Capping dimensions.");
-                 viewHeight = Math.min(viewHeight, sceneHeight);
-                 viewWidth = Math.min(viewWidth, sceneWidth);
-            }
-        }
-
-        double paneCenterX = viewWidth / 2.0;
-        double paneCenterY = viewHeight / 2.0;
-
-        System.out.println("VIEWPORT (Screen) DETAILS:");
-        System.out.println("   Visible Size: " + String.format("%.2f", viewWidth) + " x " + String.format("%.2f", viewHeight));
-        System.out.println("   SCREEN CENTER: (" + String.format("%.2f", paneCenterX) + ", " + String.format("%.2f", paneCenterY) + ")");
-
-        // --- 4. CALCULATE DELTA (The movement needed) ---
-        // Formula: ScreenCenter - MapCenter
-        double deltaX = paneCenterX - mapCenterX;
-        double deltaY = paneCenterY - mapCenterY;
-
-        System.out.println("CALCULATED TRANSLATION:");
-        System.out.println("   Math says move X by: " + String.format("%.2f", deltaX));
-        System.out.println("   Math says move Y by: " + String.format("%.2f", deltaY));
-
-        // --- 5. YOUR MANUAL ADJUSTMENT (For comparison) ---
-        double manualX = deltaX; 
-        double manualY = deltaY;
-        System.out.println("YOUR ADJUSTMENT APPLIED:");
-        System.out.println("   Final X: " + String.format("%.2f", manualX));
-        System.out.println("   Final Y: " + String.format("%.2f", manualY));
-
-        // Apply the Manual one for now so it looks good while we debug
-        targetNode.setTranslateX(manualX);
-        targetNode.setTranslateY(manualY);
+        double newScaleX = currentScaleX * zoomFactor;
+        newScaleX = (newScaleX > MAX_SCALE) ? MAX_SCALE:newScaleX;
         
-        System.out.println("=============================================================\n");
+        double newScaleY = currentScaleY * zoomFactor;
+        newScaleY = (newScaleY > MAX_SCALE) ? MAX_SCALE:newScaleY;
+        
+        this.targetNode.setScaleX(newScaleX);
+        this.targetNode.setScaleY(newScaleY);
     }
+    
+    public void handleZoomOut() {
+    	double currentScaleX = this.targetNode.getScaleX();
+        double currentScaleY = this.targetNode.getScaleY();
+        
+        double newScaleX = currentScaleX / zoomFactor;
+        newScaleX = (newScaleX < MIN_SCALE) ? MIN_SCALE:newScaleX;
+        
+        double newScaleY = currentScaleY / zoomFactor;
+        newScaleY = (newScaleY < MIN_SCALE) ? MIN_SCALE:newScaleY;
+        
+        this.targetNode.setScaleX(newScaleX);
+        this.targetNode.setScaleY(newScaleY);
+    }
+    
+    public void handleResetView() {
+    	this.targetNode.setScaleX(0.5);
+    	this.targetNode.setScaleY(0.5);
+    	
+    	this.targetNode.setTranslateX(0); //move the group back to original
+    	this.targetNode.setTranslateY(0);
+    }
+    
 }

@@ -5,10 +5,12 @@
 <?import javafx.scene.control.Accordion?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ColorPicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Slider?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.control.ToggleButton?>
@@ -168,6 +170,8 @@
                                                             <TextField fx:id="secondEdgeField" editable="false" promptText="Second Edge ID" styleClass="read-only-field" />
                                                          </children>
                                                       </VBox>
+                                                      <ColorPicker maxWidth="1.7976931348623157E308" />
+                                                      <Slider />
                                                   
                                                   <HBox spacing="5.0">
                                                      <TextField fx:id="vehicleSpeedField" promptText="Speed (m/s)" HBox.hgrow="ALWAYS" />
@@ -283,13 +287,13 @@
                <children>
                   <VBox alignment="CENTER" spacing="15.0">
                       <ToggleButton fx:id="view3DToggleButton" mnemonicParsing="false" styleClass="map-control-button" text="3D" textAlignment="CENTER" />
-                      <Button fx:id="resetViewButton" mnemonicParsing="false" styleClass="map-control-button" text="⟲" textAlignment="CENTER">
+                      <Button fx:id="resetViewButton" mnemonicParsing="false" onAction="#resetView" styleClass="map-control-button" text="⟲" textAlignment="CENTER">
                         <font>
                            <Font size="20.0" />
                         </font></Button>
                       <Separator orientation="HORIZONTAL" prefWidth="20.0" />
-                      <Button fx:id="zoomInButton" mnemonicParsing="false" styleClass="map-control-button" text="+" textAlignment="CENTER" />
-                      <Button fx:id="zoomOutButton" mnemonicParsing="false" styleClass="map-control-button" text="-" textAlignment="CENTER" />
+                      <Button fx:id="zoomInButton" mnemonicParsing="false" onAction="#zoomIn" styleClass="map-control-button" text="+" textAlignment="CENTER" />
+                      <Button fx:id="zoomOutButton" mnemonicParsing="false" onAction="#zoomOut" styleClass="map-control-button" text="-" textAlignment="CENTER" />
                   </VBox>
                </children>
                <BorderPane.margin>

@@ -47,7 +47,7 @@ public class SimulationManager {
     private String sumoConfigFilePath;
     
     // Step length in seconds (0.001s is very granular/fast)
-    private String stepLength = "1"; 
+    private String stepLength = "0.1"; 
 
     // --- TraCI Connection ---
     private SumoTraciConnection sumoConnection;
@@ -183,7 +183,7 @@ public class SimulationManager {
             this.vehicleManager.step();
             this.simulationState = new SimulationState(this.mapManager.getEdges(),
             										this.vehicleManager.getVehiclesData(),
-            										this.mapManager.getLaneIds());
+            										this.mapManager.getLaneIdList());
             		
             
         } catch (Exception e) {
@@ -193,20 +193,21 @@ public class SimulationManager {
     }
 
     /** HERE IS THE CODE OF INJECT VEHICLE, STRESSTESTING, FINDR ROUTE **/
-    public void InjectVehicle(String vehType, int r, int g, int b, int a, double Speed, String firstEdge, String lastEdge) {
+    public boolean InjectVehicle(String vehType, int r, int g, int b, int a, double Speed, String firstEdge, String lastEdge) {
 		try {
 			String routeID = "routes_" + vehicleCounter;			
 			SumoStringList edges = getRouteFromEdges(firstEdge, lastEdge, vehType);
 			if(edges == null || edges.size() == 0) {
 				System.out.println("ERROR: No path found for vehicle type " + vehType + 
 						" from edge " + firstEdge + " to edge " + lastEdge);
-				return;
+				return false;
 			}
 			sumoConnection.do_job_set(Route.add(routeID, edges));
 			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), vehType, routeID, r, g, b, a, Speed);
 		} catch (Exception e){
 			System.out.println(e);
 		}
+		return true;
 	}
 	
 	public void StressTest(int number) throws Exception {
