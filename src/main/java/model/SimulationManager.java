@@ -47,7 +47,7 @@ public class SimulationManager {
     private String sumoConfigFilePath;
     
     // Step length in seconds (0.001s is very granular/fast)
-    private String stepLength = "0.1"; 
+    private String stepLength = "1"; 
 
     // --- TraCI Connection ---
     private SumoTraciConnection sumoConnection;
@@ -183,6 +183,7 @@ public class SimulationManager {
             this.vehicleManager.step();
             this.simulationState = new SimulationState(this.mapManager.getEdges(),
             										this.vehicleManager.getVehiclesData(),
+            										this.trafficlightManager.getTrafficlightData(),
             										this.mapManager.getLaneIdList());
             		
             
