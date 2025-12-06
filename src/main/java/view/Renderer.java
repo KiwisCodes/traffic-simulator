@@ -297,7 +297,6 @@ public class Renderer {
             junctionShape.setStrokeWidth(0.5);
             
             junctionShape.setUserData(junctionId);
-
             
             return junctionShape;
         } catch (Exception e) {

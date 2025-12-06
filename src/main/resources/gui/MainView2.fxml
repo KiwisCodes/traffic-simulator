@@ -215,7 +215,9 @@
                                                     <Label fx:id="congestionLabel" style="-fx-font-weight: bold;" text="Congestion: Low" />
                                                     <Separator />
                                                     <Button fx:id="showChartsButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="View Live Charts" />
-                                                    <Button fx:id="exportCsvButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="Export CSV Report" />
+                                                    <Button fx:id="exportVehiclesCsvButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="Export CSV Vehicle Report" />
+                                                      <Button fx:id="exportEdgesCsvButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="Export CSV Edge Report" />
+                                                      <Button fx:id="exportPdfButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="Export PDF Report" />
                                                  </children>
                                               </VBox>
                                            </content>

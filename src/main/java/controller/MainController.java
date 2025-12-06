@@ -37,6 +37,7 @@ import java.util.Map;
 // Model & View Imports
 import model.SimulationManager;
 import model.StatisticsManager;
+
 import model.infrastructure.MapManager;
 import model.vehicles.VehicleManager;
 import view.Renderer;
@@ -130,7 +131,8 @@ public class MainController {
 
     // Data Export
     @FXML private CheckBox exportFilterCheck;
-    @FXML private Button exportCsvButton;
+    @FXML private Button exportVehiclesCsvButton;
+    @FXML private Button exportEdgesCsvButton;
     @FXML private Button exportPdfButton;
 
     // Map & Log
@@ -167,11 +169,12 @@ public class MainController {
     private StatisticsManager statsManager;
     private Renderer renderer; 
     private ChartWindow chartWindow;
+    
    
 //    Thread
     private AnimationTimer uiLoop; 
     private ExecutorService threadPool; 
-    private final int NUMBER_OF_THREADS = 2; 
+    private final int NUMBER_OF_THREADS = 3; 
     
 //    Flags
     private volatile static boolean isSimulationRunning = false;
@@ -191,8 +194,9 @@ public class MainController {
     // --- Initialization ---
 
     public MainController() {
-    	this.queue = new SimulationQueue(1000);
-        this.simManager = new SimulationManager(queue);
+    		this.queue = new SimulationQueue(1000);
+    		this.statsManager = new StatisticsManager();
+        this.simManager = new SimulationManager(queue, this.statsManager);
         this.renderer = new Renderer();
         this.threadPool = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
 //        this.queue = new SimulationQueue(1000);
@@ -227,12 +231,48 @@ public class MainController {
         }
         
         disableButtons(true);
-        
-        this.statsManager = new StatisticsManager();
-        
         this.chartWindow = new ChartWindow();
         
         showChartsButton.setOnAction(e -> this.chartWindow.show());
+        
+        //khang's export
+        if (exportVehiclesCsvButton != null) {
+            exportVehiclesCsvButton.setOnAction(e -> {
+                log("Exporting Vehicle CSV...");
+                Platform.runLater(() -> {
+	            		simManager.generateReports("C:\\Users\\Admin\\eclipse-workspace\\traffic-simulator", "VEHICLE", currentStep);
+	            });
+            });
+        }
+
+        if (exportEdgesCsvButton != null) {
+            exportEdgesCsvButton.setOnAction(e -> {
+                log("Exporting Edge CSV...");
+                Platform.runLater(() -> {
+            			simManager.generateReports("C:\\Users\\Admin\\eclipse-workspace\\traffic-simulator", "EDGE", currentStep);
+                });
+            });
+        }
+
+        if (exportPdfButton != null) {
+            exportPdfButton.setOnAction(e -> {
+                log("Exporting PDF Report...");
+                threadPool.submit(() -> {
+                		try {                            
+                            // This is where it likely crashes silently
+                			   simManager.generateReports("C:\\Users\\Admin\\eclipse-workspace\\traffic-simulator", "PDF", currentStep);
+                            Platform.runLater(() -> log("✅ PDF Saved to Desktop!"));
+
+                        } catch (Throwable ex) { // <--- CHANGE THIS FROM 'Exception' TO 'Throwable'
+                            // Now we will see the real error
+                            System.err.println("CRITICAL THREAD ERROR:"); 
+                            ex.printStackTrace();
+                            
+                            Platform.runLater(() -> log("❌ CRASH: " + ex.getClass().getSimpleName() + " - " + ex.getMessage()));
+                        }
+                });
+            });
+        }
         
     }
 
@@ -366,7 +406,7 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 
     private void updateView() {
 
-    	SimulationState simulationState;
+    		SimulationState simulationState;
 		try {
 			simulationState = this.queue.pollState();
 			if(simulationState == null) return;
@@ -387,7 +427,8 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 			double avgSpeed = this.statsManager.avgVehiclesSpeed();
 			Map<String, Integer> density = this.statsManager.calculateVehicleDensity();
 			Map<String, Integer> travelTimeDist = this.statsManager.calculateTravelTimeDistribution(60);
-
+//			String threadName = Thread.currentThread().getName();		    
+//		    System.out.println(">>> [WRITE] Thread: " + threadName + " | Step: " + currentStep);
 //			System.out.println(avgSpeed);
 //			System.out.println(density);
 //			System.out.println(travelTimeDist);
@@ -490,11 +531,13 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     }
     
     private void disableButtons(boolean state) {
-    	this.pauseButton.setDisable(state);
+    		this.pauseButton.setDisable(state);
         this.stepButton.setDisable(state);
         this.injectVehicleButton.setDisable(state);
         this.showChartsButton.setDisable(state);
-        this.exportCsvButton.setDisable(state);
+        this.exportPdfButton.setDisable(state);
+        this.exportVehiclesCsvButton.setDisable(state);
+        this.exportEdgesCsvButton.setDisable(state);
         this.stressTestButton.setDisable(state);
     }
 

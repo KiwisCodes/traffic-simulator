@@ -42,7 +42,7 @@ public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
-    private String sumoPath = "/Users/apple/sumo/bin/sumo"; 
+    private String sumoPath = "C:\\PROGRA~2\\Eclipse\\Sumo\\bin\\sumo.exe"; 
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
@@ -66,6 +66,7 @@ public class SimulationManager {
     private VehicleManager vehicleManager;
     private TrafficlightManager trafficlightManager;
     
+    
 //    private SimulationQueue queue;
     private SimulationState simulationState;
 //	private static int routeCounter = 0;
@@ -74,8 +75,10 @@ public class SimulationManager {
 	public boolean isRunning = false;
 
     // --- Constructor ---
-    public SimulationManager(SimulationQueue queue) {
-    	this.sumoConnection = new SumoTraciConnection(sumoPath, sumoConfigFileName);
+    public SimulationManager(SimulationQueue queue, StatisticsManager statsManager) {
+    		this.sumoConnection = new SumoTraciConnection(sumoPath, sumoConfigFileName);
+    		//khang's
+    		this.statisticsManager = statsManager;
     }
 
     // ====================================================================
@@ -113,8 +116,8 @@ public class SimulationManager {
             // Load Static Map Data (Edges/Bounds) immediately after connecting
             this.mapManager = new MapManager(sumoConnection);
             this.vehicleManager = new VehicleManager(sumoConnection);
-    		this.trafficlightManager = new TrafficlightManager(sumoConnection);
-            
+    			this.trafficlightManager = new TrafficlightManager(sumoConnection);
+    			this.reportManager = new ReportManager();
             System.out.println("Connection established!");
             this.isRunning = true;
             return true;
@@ -191,6 +194,105 @@ public class SimulationManager {
             e.printStackTrace();
             stopSimulation(); 
         }
+    }
+    // khang's report
+    public void generateReports(String outputDir, String type, int currentStepCount) {
+        System.out.println("--- DEBUG: Starting Report Generation ---");
+//        String threadName = Thread.currentThread().getName();
+//        System.out.println("--- [READ] Starting Report on Thread: " + threadName + " ---");
+        // 1. Check if Managers exist
+        if (this.reportManager == null || this.statisticsManager == null || this.mapManager == null) {
+            System.err.println("❌ ERROR: Managers are NULL. Did you click 'Start Simulation' first?");
+            return;
+        }
+
+        // 2. Prepare Folder
+        File folder = new File(outputDir);
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
+        System.out.println("📂 Saving files to: " + folder.getAbsolutePath());
+
+        String timestamp = String.valueOf(System.currentTimeMillis());
+
+        // ---------------------------------------------------------
+        // A. EXPORT VEHICLES CSV
+        // ---------------------------------------------------------
+        try {
+            if (type.equals("ALL") || type.equals("VEHICLE")) {
+                System.out.println("   > Collecting Vehicle Data...");
+                List<VehicleInfo> vehicleList = new ArrayList<>();
+                Map<String, Map<String, Object>> rawData = vehicleManager.getVehiclesData();
+                for (Map.Entry<String, Map<String, Object>> entry : rawData.entrySet()) {
+                    String id = entry.getKey();
+                    Map<String, Object> attr = entry.getValue();
+                    
+                    double speed = (Double) attr.get("Speed");
+                    String color = attr.get("Color").toString();
+                    double depart = (Double) attr.get("Depart");
+                    double timeAlive = currentStepCount - depart;
+
+                    vehicleList.add(new VehicleInfo(id, speed, timeAlive, color, "car"));
+                }
+
+                String fileName = outputDir + "/vehicles_" + timestamp + ".csv";
+                this.reportManager.exportVehiclesCSV(vehicleList, fileName);
+                System.out.println("   ✅ Vehicle CSV saved.");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ CRASH during Vehicle Export: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // ---------------------------------------------------------
+        // B. EXPORT EDGES CSV (THIS IS THE PART YOU WERE MISSING)
+        // ---------------------------------------------------------
+        try {
+            if (type.equals("ALL") || type.equals("EDGE")) {
+                System.out.println("   > Collecting Edge Data...");
+                List<EdgeInfo> edgeList = new ArrayList<>();
+                
+                // 1. Get Density Data from Stats
+                Map<String, Integer> densityMap = this.statisticsManager.calculateVehicleDensity();
+                
+                // 2. Iterate through all static edges from MapManager
+                List<String> allEdges = mapManager.getEdgeIdList();
+                
+                for (String edgeId : allEdges) {
+                    double density = densityMap.getOrDefault(edgeId, 0);
+                    
+                    // Use global average speed if cars are present, else 0
+                    double avgSpeed = (density > 0) ? this.statisticsManager.avgVehiclesSpeed() : 0.0;
+                    double width = 3.5; // Default width (SUMO standard)
+
+                    edgeList.add(new EdgeInfo(edgeId, width, density, avgSpeed));
+                }
+
+                String fileName = outputDir + "/edges_" + timestamp + ".csv";
+                this.reportManager.exportEdgesCSV(edgeList, fileName);
+                System.out.println("   ✅ Edge CSV saved.");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ CRASH during Edge Export: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // ---------------------------------------------------------
+        // C. EXPORT PDF REPORT
+        // ---------------------------------------------------------
+        try {
+            if (type.equals("ALL") || type.equals("PDF")) {
+                System.out.println("   > Generating PDF...");
+                String pdfName = outputDir + "/SimulationReport_" + timestamp + ".pdf";
+                reportManager.exportReportPDF(this.statisticsManager, pdfName, currentStepCount);
+                System.out.println("   ✅ PDF saved.");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ CRASH during PDF Export: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        System.out.println("--- DEBUG: Finished ---");
     }
 
     /** HERE IS THE CODE OF INJECT VEHICLE, STRESSTESTING, FINDR ROUTE **/
