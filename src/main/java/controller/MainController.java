@@ -615,6 +615,7 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     @FXML private void insertSumoConfigFile() {}
     @FXML private void applyFilter() {}
     @FXML private void clearFilter() {}
+    
     @FXML private void runStressTest() {
     	try {
 			this.simManager.StressTest();
