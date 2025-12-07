@@ -66,6 +66,7 @@ import data.SimulationState;
 
 import data.SimulationQueue;
 import data.SimulationState;
+import view.ChartWindow;
 
 public class MainController {
     // --- FXML View Elements ---
@@ -186,7 +187,8 @@ public class MainController {
     private Map<String, Shape> vehicleVisuals = new HashMap<>();
     private Group mapContentGroup; // Container for zooming/panning
     private MapInteractionHandler mapInteractionHandler;
-    private SimulationQueue queue;	
+    private SimulationQueue uiQueue;	
+    private SimulationQueue statQueue;
 
 //    private final double PADDING = 50.0;//we dont need this
     
@@ -194,12 +196,12 @@ public class MainController {
     // --- Initialization ---
 
     public MainController() {
-    		this.queue = new SimulationQueue(1000);
-    		this.statsManager = new StatisticsManager();
-        this.simManager = new SimulationManager(queue, this.statsManager);
+		this.uiQueue = new SimulationQueue(1);
+		this.statsManager = new StatisticsManager();
+        this.simManager = new SimulationManager(uiQueue, this.statsManager);
         this.renderer = new Renderer();
         this.threadPool = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
-//        this.queue = new SimulationQueue(1000);
+        this.statQueue = new SimulationQueue(1);
     }
     
     // Main entry point if running stand alone (optional)
@@ -235,12 +237,23 @@ public class MainController {
         
         showChartsButton.setOnAction(e -> this.chartWindow.show());
         
+        //report in to the report folder
+        String projectPath = System.getProperty("user.dir");
+        String reportPath = projectPath + File.separator + "reports";
+        
+        //if the report folder not yet exist then we make 1
+        File reportDir = new File(reportPath);
+        if (!reportDir.exists()) {
+            boolean created = reportDir.mkdirs();
+            if (created) log("Created new reports directory: " + reportPath);
+        }
+        
         //khang's export
         if (exportVehiclesCsvButton != null) {
             exportVehiclesCsvButton.setOnAction(e -> {
                 log("Exporting Vehicle CSV...");
                 Platform.runLater(() -> {
-	            		simManager.generateReports("C:\\Users\\Admin\\eclipse-workspace\\traffic-simulator", "VEHICLE", currentStep);
+	            		simManager.generateReports(reportPath, "VEHICLE", currentStep);
 	            });
             });
         }
@@ -249,7 +262,7 @@ public class MainController {
             exportEdgesCsvButton.setOnAction(e -> {
                 log("Exporting Edge CSV...");
                 Platform.runLater(() -> {
-            			simManager.generateReports("C:\\Users\\Admin\\eclipse-workspace\\traffic-simulator", "EDGE", currentStep);
+            			simManager.generateReports(reportPath, "EDGE", currentStep);
                 });
             });
         }
@@ -260,7 +273,7 @@ public class MainController {
                 threadPool.submit(() -> {
                 		try {                            
                             // This is where it likely crashes silently
-                			   simManager.generateReports("C:\\Users\\Admin\\eclipse-workspace\\traffic-simulator", "PDF", currentStep);
+                			   simManager.generateReports(reportPath, "PDF", currentStep);
                             Platform.runLater(() -> log("✅ PDF Saved to Desktop!"));
 
                         } catch (Throwable ex) { // <--- CHANGE THIS FROM 'Exception' TO 'Throwable'
@@ -361,11 +374,12 @@ public class MainController {
             			continue;
                 	}
                     try {
+                    	SimulationState simulationState = this.simManager.getState();
                         this.simManager.step();
-                        Thread.sleep(10);
-//                        simManager.StressTest();
-                        this.queue.offerState(this.simManager.getState());// by this we dont get interrupted, unlike putState
+                        this.uiQueue.offerState(simulationState);// by this we dont get interrupted, unlike putState
+                        this.statQueue.offerState(simulationState);
                         currentStep++;
+                        Thread.sleep(10);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -376,10 +390,44 @@ public class MainController {
             threadPool.submit(() -> {
                 log("Stats Thread Started.");
                 while (isSimulationRunning) {
+                	if(this.simManager.getConnection().isClosed()) {
+                		log("Connection lost, stopping loop");
+                		break;
+                	}
+                	if(isPaused) {
+            			try {
+							Thread.sleep(100);
+						} catch (InterruptedException e) {
+							Thread.currentThread().interrupt();//this is needed when user hit stop when it is currently paused
+							e.printStackTrace();
+						}
+            			continue;
+                	}
+                	try {
+                        // 1. TAKE from the queue (Blocking call - waits if empty)
+                        SimulationState state = statQueue.takeState(); 
+                        
+                        if (state == null) continue;
+//                        Map<String, Map<String, Object>> statsData = convertStateToStatsFormat(state);
+                        Map<String, Map<String, Object>> statsData = state.getVehicles();
+                        this.statsManager.step(statsData, currentStep);
+                        
+                        double avgSpeed = this.statsManager.avgVehiclesSpeed();
+                        Map<String, Integer> density = this.statsManager.calculateVehicleDensity();
+                        Map<String, Integer> travelTimeDist = this.statsManager.calculateTravelTimeDistribution(60);
+
+                        this.chartWindow.updateData(currentStep, avgSpeed, density, travelTimeDist);
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        log("Stats Thread Interrupted");
+                        break;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             });
 
-            // --- D. START THREAD 1: UI RENDERING ---
+
             startUiLoop();
         } else {
             log("Failed to connect to SUMO.");
@@ -389,15 +437,7 @@ public class MainController {
         uiLoop = new AnimationTimer() {
             @Override
             public void handle(long now) {
-                // This runs on the JavaFX UI Thread
-            	/*
- * handle(long now): 
- * This method is called automatically by JavaFX roughly 60 times per second (depending on your monitor's refresh rate).
-
-Why it's special: Code running inside handle() is executed on the JavaFX Application Thread. 
-This is the only thread allowed to modify UI elements (like moving a Circle or changing a Label text).
-            	 */
-                updateView();//maybe this should draw everything;	
+                updateView();
             }
         };
         uiLoop.start();
@@ -408,7 +448,7 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 
     		SimulationState simulationState;
 		try {
-			simulationState = this.queue.pollState();
+			simulationState = this.uiQueue.pollState();
 			if(simulationState == null) return;
 			
 			this.renderer.renderVehicles(vehiclePane, simulationState.getVehicles());
@@ -419,28 +459,28 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 			updateCurrentVehicleCount(currentVehicleCount);
 			
 			//Khoi's
-			Map<String, Map<String, Object>> statsData = convertStateToStatsFormat(simulationState);
-			this.statsManager.step(statsData, currentStep);
+//			Map<String, Map<String, Object>> statsData = convertStateToStatsFormat(simulationState);
+//			this.statsManager.step(statsData, currentStep);
 			
 //			System.out.println(statsData);
 			
-			double avgSpeed = this.statsManager.avgVehiclesSpeed();
-			Map<String, Integer> density = this.statsManager.calculateVehicleDensity();
-			Map<String, Integer> travelTimeDist = this.statsManager.calculateTravelTimeDistribution(60);
+//			double avgSpeed = this.statsManager.avgVehiclesSpeed();
+//			Map<String, Integer> density = this.statsManager.calculateVehicleDensity();
+//			Map<String, Integer> travelTimeDist = this.statsManager.calculateTravelTimeDistribution(60);
 //			String threadName = Thread.currentThread().getName();		    
 //		    System.out.println(">>> [WRITE] Thread: " + threadName + " | Step: " + currentStep);
 //			System.out.println(avgSpeed);
 //			System.out.println(density);
 //			System.out.println(travelTimeDist);
 
-			this.chartWindow.updateData(currentStep, avgSpeed, density, travelTimeDist);
+//			this.chartWindow.updateData(currentStep, avgSpeed, density, travelTimeDist);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			System.err.print(e.getMessage());
 		}
     }
     
-    // --- HELPER: Logging ---
+
     private void log(String message) {
         System.out.println(message);
         
@@ -510,28 +550,22 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 
     public void stopSimulation() {
         System.out.println("Stopping simulation...");
-        
-        // 1. Stop the loops
         isSimulationRunning = false;
         
-        // 2. Stop the UI timer
         if (uiLoop != null) {
             uiLoop.stop();
         }
-        
-        // 3. KILL the background threads immediately
+        if (simManager != null) {
+        	simManager.stopSimulation();
+        }
         if (threadPool != null) {
             threadPool.shutdownNow(); // This sends an "interruption" to the sleeps
         }
         
-        // 4. Close connection
-        if (simManager != null) {
-            simManager.stopSimulation();
-        }
     }
     
     private void disableButtons(boolean state) {
-    		this.pauseButton.setDisable(state);
+		this.pauseButton.setDisable(state);
         this.stepButton.setDisable(state);
         this.injectVehicleButton.setDisable(state);
         this.showChartsButton.setDisable(state);
@@ -553,17 +587,18 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     		pauseButton.setText("⏸ Pause");
     	}
     }
+    
     @FXML private void stepSimulation() {
     	if(!isPaused) {
     		log("Please pause the simulation first");
     		return;
     	}
-    	
     	this.simManager.step();
     	currentStep++;
     	SimulationState newSimulationState = this.simManager.getState();
     	try {
-			this.queue.offerState(newSimulationState);
+			this.uiQueue.offerState(newSimulationState);
+			this.statQueue.offerState(newSimulationState);
 			log("Step Forward -> " + currentStep);
 		} catch (InterruptedException e) {
 			log("Error stepping: " + e.getMessage());
@@ -615,6 +650,7 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
     @FXML private void insertSumoConfigFile() {}
     @FXML private void applyFilter() {}
     @FXML private void clearFilter() {}
+    
     @FXML private void runStressTest() {
     	try {
 			this.simManager.StressTest();
@@ -625,102 +661,102 @@ This is the only thread allowed to modify UI elements (like moving a Circle or c
 		}
     }
     
-    public class ChartWindow {
-    	private final Stage stage;
-    	
-    	private XYChart.Series<Number, Number> speedSeries;
-    	private LineChart<Number, Number> speedChart;
-    	
-    	private XYChart.Series<String, Number> densitySeries;
-    	private BarChart<String, Number> densityChart;
-    	
-    	private XYChart.Series<String, Number> travelTimeSeries;
-    	private BarChart<String, Number> travelTimeChart;
-    	
-    	public ChartWindow() {
-    		this.stage = new Stage();
-    		this.stage.setTitle("Live Simulation Statistics");
-    		
-    		initCharts();
-    		
-    		VBox layout = new VBox(10);
-    		layout.getChildren().addAll(speedChart, densityChart, travelTimeChart);
-    		
-    		Scene scene = new Scene(layout, 600, 900);
-    		stage.setScene(scene);
-    	}
-    	
-    	private void initCharts() {
-    		NumberAxis xAxisSpeed = new NumberAxis();
-    		xAxisSpeed.setLabel("Step");
-    		NumberAxis yAxisSpeed = new NumberAxis();
-    		yAxisSpeed.setLabel("Avg Speed (m/s)");
-    		
-    		speedChart = new LineChart<>(xAxisSpeed, yAxisSpeed);
-    		speedChart.setTitle("Average Network Speed");
-    		speedChart.setAnimated(false);
-    		
-    		speedSeries = new XYChart.Series<>();
-    		speedSeries.setName("Avg Speed");
-    		speedChart.getData().add(speedSeries);
-    		
-    		CategoryAxis xAxisDens = new CategoryAxis();
-    		xAxisDens.setLabel("Edge ID");
-    		NumberAxis yAxisDens = new NumberAxis();
-    		yAxisDens.setLabel("Count");
-    		
-    		densityChart = new BarChart<>(xAxisDens, yAxisDens);
-    		densityChart.setTitle("Vehicle Density per Edge");
-    		densityChart.setAnimated(false);
-    		
-    		densitySeries = new XYChart.Series<>();
-    		densitySeries.setName("Vehicles");
-    		densityChart.getData().add(densitySeries);
-    		
-    		CategoryAxis xAxisTime = new CategoryAxis();
-    		xAxisTime.setLabel("Travel Time Range (s)");
-    		NumberAxis yAxisTime = new NumberAxis();
-    		yAxisTime.setLabel("Number of Vehicles");
-    		
-    		travelTimeChart = new BarChart<>(xAxisTime, yAxisTime);
-    		travelTimeChart.setTitle("Travel Time Distribution");
-    		travelTimeChart.setAnimated(false);
-    		
-    		travelTimeSeries = new XYChart.Series<>();
-    		travelTimeSeries.setName("Frequency");
-    		travelTimeChart.getData().add(travelTimeSeries);
-    	}
-    	
-    	public void show() {
-    		if (!stage.isShowing()) {
-    			stage.show();
-    		} else {
-    			stage.toFront();
-    		}
-    	}
-    	
-    	public void updateData(int currentStep, double avgSpeed,
-    			Map<String, Integer> densityMap, Map<String, Integer> travelTimeMap) {
-    		Platform.runLater(() -> {
-    			speedSeries.getData().add(new XYChart.Data<>(currentStep, avgSpeed));
-    			densitySeries.getData().clear();
-    			for (Map.Entry<String, Integer> entry: densityMap.entrySet()) {
-    				densitySeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-    			}
-    			
-    			travelTimeSeries.getData().clear();
-    			for (Map.Entry<String, Integer> entry : travelTimeMap.entrySet()) {
-    				travelTimeSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-    			}
-    		});
-    	}
-    }
+//    public class ChartWindow {
+//    	private final Stage stage;
+//    	
+//    	private XYChart.Series<Number, Number> speedSeries;
+//    	private LineChart<Number, Number> speedChart;
+//    	
+//    	private XYChart.Series<String, Number> densitySeries;
+//    	private BarChart<String, Number> densityChart;
+//    	
+//    	private XYChart.Series<String, Number> travelTimeSeries;
+//    	private BarChart<String, Number> travelTimeChart;
+//    	
+//    	public ChartWindow() {
+//    		this.stage = new Stage();
+//    		this.stage.setTitle("Live Simulation Statistics");
+//    		
+//    		initCharts();
+//    		
+//    		VBox layout = new VBox(10);
+//    		layout.getChildren().addAll(speedChart, densityChart, travelTimeChart);
+//    		
+//    		Scene scene = new Scene(layout, 600, 900);
+//    		stage.setScene(scene);
+//    	}
+//    	
+//    	private void initCharts() {
+//    		NumberAxis xAxisSpeed = new NumberAxis();
+//    		xAxisSpeed.setLabel("Step");
+//    		NumberAxis yAxisSpeed = new NumberAxis();
+//    		yAxisSpeed.setLabel("Avg Speed (m/s)");
+//    		
+//    		speedChart = new LineChart<>(xAxisSpeed, yAxisSpeed);
+//    		speedChart.setTitle("Average Network Speed");
+//    		speedChart.setAnimated(false);
+//    		
+//    		speedSeries = new XYChart.Series<>();
+//    		speedSeries.setName("Avg Speed");
+//    		speedChart.getData().add(speedSeries);
+//    		
+//    		CategoryAxis xAxisDens = new CategoryAxis();
+//    		xAxisDens.setLabel("Edge ID");
+//    		NumberAxis yAxisDens = new NumberAxis();
+//    		yAxisDens.setLabel("Count");
+//    		
+//    		densityChart = new BarChart<>(xAxisDens, yAxisDens);
+//    		densityChart.setTitle("Vehicle Density per Edge");
+//    		densityChart.setAnimated(false);
+//    		
+//    		densitySeries = new XYChart.Series<>();
+//    		densitySeries.setName("Vehicles");
+//    		densityChart.getData().add(densitySeries);
+//    		
+//    		CategoryAxis xAxisTime = new CategoryAxis();
+//    		xAxisTime.setLabel("Travel Time Range (s)");
+//    		NumberAxis yAxisTime = new NumberAxis();
+//    		yAxisTime.setLabel("Number of Vehicles");
+//    		
+//    		travelTimeChart = new BarChart<>(xAxisTime, yAxisTime);
+//    		travelTimeChart.setTitle("Travel Time Distribution");
+//    		travelTimeChart.setAnimated(false);
+//    		
+//    		travelTimeSeries = new XYChart.Series<>();
+//    		travelTimeSeries.setName("Frequency");
+//    		travelTimeChart.getData().add(travelTimeSeries);
+//    	}
+//    	
+//    	public void show() {
+//    		if (!stage.isShowing()) {
+//    			stage.show();
+//    		} else {
+//    			stage.toFront();
+//    		}
+//    	}
+//    	
+//    	public void updateData(int currentStep, double avgSpeed,
+//    			Map<String, Integer> densityMap, Map<String, Integer> travelTimeMap) {
+//    		Platform.runLater(() -> {
+//    			speedSeries.getData().add(new XYChart.Data<>(currentStep, avgSpeed));
+//    			densitySeries.getData().clear();
+//    			for (Map.Entry<String, Integer> entry: densityMap.entrySet()) {
+//    				densitySeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+//    			}
+//    			
+//    			travelTimeSeries.getData().clear();
+//    			for (Map.Entry<String, Integer> entry : travelTimeMap.entrySet()) {
+//    				travelTimeSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+//    			}
+//    		});
+//    	}
+//    }
     
-    private Map<String, Map<String, Object>> convertStateToStatsFormat(SimulationState state) {
-    	Map<String, Map<String, Object>> vehiclesData = new HashMap<>();
-    	vehiclesData = state.getVehicles();
-    	return vehiclesData;
-    }
+//    private Map<String, Map<String, Object>> convertStateToStatsFormat(SimulationState state) {
+//    	Map<String, Map<String, Object>> vehiclesData = new HashMap<>();
+//    	vehiclesData = state.getVehicles();
+//    	return vehiclesData;
+//    }
     
     
     

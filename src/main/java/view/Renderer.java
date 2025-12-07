@@ -486,7 +486,13 @@ public class Renderer {
 	
 	            carShape.setTranslateX(screenX); //Dịch chuyển" (Translate) chiếc xe từ gốc (0,0) đến đúng vị trí thực tế trên bản đồ.
 	            carShape.setTranslateY(screenY);
-	            carShape.setRotate(angle);
+	            
+	            //try to fix angle
+//	            if (angle < 0) angle += 360;
+//	            if (angle >= 360) angle %= 360;
+	             carShape.setRotate(angle);
+//	             
+//	            System.out.println(angle);
 	//            carShape.setFill(carColor); temporary shut down to see yellow cars
 	            if(vehicleId.contains("vehicle_")) {
 	            	carShape.setFill(Color.RED);

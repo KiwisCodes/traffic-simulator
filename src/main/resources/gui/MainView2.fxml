@@ -107,7 +107,7 @@
                                           <TextField fx:id="pathToSumocfgFileField" promptText="Path to .sumocfg..." />
                                           <HBox spacing="8.0">
                                              <children>
-                                                <Button fx:id="loadSumoPathButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="action-button" text="Load Sumo Path" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="loadSumoPathButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#loadSumoPath" styleClass="action-button" text="Load Sumo Path" HBox.hgrow="ALWAYS" />
                                                 <Button fx:id="loadSumoConfigButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="secondary-button" text="Load Map" HBox.hgrow="ALWAYS" />
                                              </children>
                                           </HBox>
@@ -193,9 +193,12 @@
                                                <children>
                                                   <Label text="Select Traffic Light on map" textFill="#666666" />
                                                   <TextField fx:id="trafficLightIdField" editable="false" promptText="TL ID" />
-                                                  <HBox spacing="5.0">
+                                                  <HBox alignment="TOP_CENTER" spacing="5.0">
                                                      <Button fx:id="setRedPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="danger-button" text="Red" HBox.hgrow="ALWAYS" />
-                                                     <Button fx:id="setGreenPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="success-button" text="Green" HBox.hgrow="ALWAYS" />
+                                                         <Region prefHeight="26.0" prefWidth="0.0" />
+                                                         <Button fx:id="setRedPhaseButton1" maxWidth="1.7976931348623157E308" minWidth="80.0" mnemonicParsing="false" styleClass="danger-button" text="Yellow" />
+                                                         <Region prefHeight="26.0" prefWidth="0.0" />
+                                                     <Button fx:id="setGreenPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" prefHeight="26.0" prefWidth="52.0" styleClass="success-button" text="Green" HBox.hgrow="ALWAYS" />
                                                   </HBox>
                                                   <HBox spacing="5.0">
                                                       <TextField fx:id="phaseDurationField" promptText="Duration (s)" HBox.hgrow="ALWAYS" />

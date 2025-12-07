@@ -60,6 +60,10 @@ public class VehicleManager {
 				Object colorResponse = this.conn.do_job_get(colorCmd);
 				vehicleAttributes.put("Color", colorResponse);
 				
+				//Hung check
+//				SumoColor sumoColor = (SumoColor) colorResponse;
+//				System.out.println(sumoColor.r + " " + sumoColor.g + " " + sumoColor.b + " " + sumoColor.a);
+				
 				SumoCommand posCmd = Vehicle.getPosition(id);
 				Object posResponse = this.conn.do_job_get(posCmd);
 				vehicleAttributes.put("Position", posResponse);
