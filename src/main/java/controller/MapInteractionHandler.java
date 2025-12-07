@@ -23,8 +23,8 @@ public class MapInteractionHandler {
     private double translateAnchorY;
 
     // Zoom settings
-    private static final double MAX_SCALE = 75.0;
-    private static final double MIN_SCALE = 0.1;
+    private static final double MAX_SCALE = 10.0;
+    private static final double MIN_SCALE = 0.5;
     private static final double zoomFactor = 1.2;
 
     public MapInteractionHandler(Node inputNode, Node targetNode) {
@@ -72,8 +72,6 @@ public class MapInteractionHandler {
                 event.consume();
                 return;
             }
-
-            // --- THE FIX: COMPENSATE FOR MOUSE POSITION ---
             
             // B. Get the mouse position relative to the Scene
             double mouseX = event.getSceneX();
@@ -130,8 +128,8 @@ public class MapInteractionHandler {
     }
     
     public void handleResetView() {
-    	this.targetNode.setScaleX(0.5);
-    	this.targetNode.setScaleY(0.5);
+    	this.targetNode.setScaleX(0.75);
+    	this.targetNode.setScaleY(0.75);
     	
     	this.targetNode.setTranslateX(0); //move the group back to original
     	this.targetNode.setTranslateY(0);

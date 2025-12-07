@@ -17,27 +17,27 @@ public class SimulationState {
 	so to conclude -> managers must return a copy, not the reference to the real thing.
 	*/
 
-	private final Map<String, EdgeObject> lastEdges;
+//	private final Map<String, EdgeClass> lastEdges;
 //	private final Map<String, LaneObject> lastLanes;
     private final Map<String, Map<String, Object>> lastVehicles;//need to change this
-    private final List<String> laneIdList; //we use this to draw all the lanes;
+//    private final List<String> laneIdList; //we use this to draw all the lanes;
     private final Map<TrafficlightObject, Character> lastTrafficLightIDs;
 //    private final List<String> lastTrafficLightIDs; commented all traffic light to test vehicle and edges/lanes
 //    private final Map<String, Map<String, String>> lastLanes;
 //    private final Map<String, Map<String, String>> lastJunctions;
     public SimulationState(
-    		Map<String, EdgeObject> lastEdges,
+//    		Map<String, EdgeClass> lastEdges,
     		Map<String, Map<String, Object>> lastVehicles,
-    		Map<TrafficlightObject, Character> lastTrafficLightIDs,
-    		List<String> laneIdList
+    		Map<TrafficlightObject, Character> lastTrafficLightIDs
+//    		List<String> laneIdList
     		) 
     {	
-    	this.lastEdges = lastEdges;
+//    	this.lastEdges = lastEdges;
 		this.lastVehicles = lastVehicles;
 		this.lastTrafficLightIDs = lastTrafficLightIDs;
-		this.laneIdList = laneIdList;
+//		this.laneIdList = laneIdList;
 	}
-	public Map<String, EdgeObject> getEdges() { return lastEdges; }
+//	public Map<String, EdgeClass> getEdges() { return lastEdges; }
     public Map<String, Map<String, Object>> getVehicles() { return lastVehicles; }
     public Map<TrafficlightObject, Character> getTrafficLights() { return lastTrafficLightIDs;}
 }

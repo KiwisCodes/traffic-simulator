@@ -30,30 +30,23 @@ import model.infrastructure.MapManager;
 import model.infrastructure.TrafficlightManager;
 import data.*;
 
-/**
- * The Core Logic Engine of the Application.
- * Responsible for:
- * 1. Maintaining the TraCI connection.
- * 2. Running the simulation loop in a background thread.
- * 3. Keeping the "State of the World" (Vehicles, Traffic Lights) up to date.
- * 4. Providing Thread-Safe data snapshots to the GUI Controller.
- */
+
 public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
-    private String sumoPath = "C:\\PROGRA~2\\Eclipse\\Sumo\\bin\\sumo.exe"; 
+    private String sumoPath = ""; 
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
     // Step length in seconds (0.001s is very granular/fast)
-    private String stepLength = "1"; 
+    private String stepLength = "0.1"; 
 
     // --- TraCI Connection ---
     private SumoTraciConnection sumoConnection;
 
     // --- State Data (The "World") ---
-    private	Map<String, EdgeObject> listOfEdges;
+    private	Map<String, EdgeClass> listOfEdges;
 	private	Map<String, Map<String, Object>> listOfVehicles;
 	private List<String> listOfTrafficlightIds;
 	private	Map<String, Map<String, String>> listOfLanes;
@@ -175,21 +168,17 @@ public class SimulationManager {
         System.out.println("✅ Simulation loop finished.");
     }
 
-    /**
-     * Executes ONE single simulation step.
-     * This method is Thread-Safe using the 'Snapshot' pattern.
-     */
+
     public void step() {
         try {
             this.sumoConnection.do_timestep();
-//            System.out.println("just did time step");
             this.vehicleManager.step();
-            this.simulationState = new SimulationState(this.mapManager.getEdges(),
+            this.simulationState = new SimulationState(
+//            										this.mapManager.getEdges(),
             										this.vehicleManager.getVehiclesData(),
-            										this.trafficlightManager.getTrafficlightData(),
-            										this.mapManager.getLaneIdList());
-            		
-            
+            										this.trafficlightManager.getTrafficlightData()
+//            										this.mapManager.getLaneIdList()
+            										);
         } catch (Exception e) {
             e.printStackTrace();
             stopSimulation(); 
@@ -354,7 +343,7 @@ public class SimulationManager {
 		}
 	}
 	
-	public Map<String, EdgeObject> getListOfEdges() {
+	public Map<String, EdgeClass> getListOfEdges() {
 		return listOfEdges;
 	};
 	

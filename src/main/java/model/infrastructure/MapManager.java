@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import model.infrastructure.EdgeObject;
-import model.infrastructure.LaneObject;
+import model.infrastructure.EdgeClass;
+import model.infrastructure.LaneClass;
 import de.tudresden.sumo.cmd.Edge;
 import de.tudresden.sumo.cmd.Junction;
 import de.tudresden.sumo.cmd.Lane;
@@ -18,23 +18,22 @@ import de.tudresden.ws.container.SumoBoundingBox; // Or use simple doubles
 import it.polito.appeal.traci.SumoTraciConnection;
 
 public class MapManager {
-//	Sumo Connection
 	private SumoTraciConnection sumoConnection;
 	private int totalEdge = 0;
 	private int totalLane = 0;
+	private int totalJunction = 0;
 
-//    Static Network Data
     private List<String> edgeIdList;
     private List<String> laneIdList;
     private List<String> junctionIdList;
     private SumoBoundingBox sumoBoundingBox;
     
-    private Map<String, EdgeObject> edges;
-    private Map<String, LaneObject> lanes;
-    private Map<String, JunctionObject> junctions;
+    private Map<String, EdgeClass> edges;
+    private Map<String, LaneClass> lanes;
+    private Map<String, JunctionClass> junctions;
     
     
-//     Map Dimensions (for the Renderer)
+    //i use this for the converter
     private double minX = Double.MAX_VALUE;
     private double minY = Double.MAX_VALUE;
     private double maxX = Double.MIN_VALUE;
@@ -63,7 +62,8 @@ public class MapManager {
 				this.junctions = new HashMap<>();
 				
 				
-				fetchEdgesFromSumo();
+				fetchEdgesFromSumo();//this also fetch lanes from Sumo
+				fetchJunctionsFromSumo();
 				
 				
 				
@@ -92,33 +92,22 @@ public class MapManager {
 				}
 				
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
+				System.err.println(e.getMessage());
 				e.printStackTrace();
 			}
         }
     }
 
-//     Setters (Called by SimulationManager when loading)
-    public void setEdgeIds(List<String> edges) { this.edgeIdList = edges; }
-    public void setBounds(double minX, double minY, double maxX, double maxY) {
-        this.minX = minX;
-        this.minY = minY;
-        this.maxX = maxX;
-        this.maxY = maxY;
-    }
 
-//     Verification Helpers
-    public boolean isValidEdge(String id) {
-        return edgeIdList.contains(id);
-    }
+//    public void setEdgeIds(List<String> edges) { this.edgeIdList = edges; }
+//    public void setBounds(double minX, double minY, double maxX, double maxY) {
+//        this.minX = minX;
+//        this.minY = minY;
+//        this.maxX = maxX;
+//        this.maxY = maxY;
+//    }
 
-    
-    
-    
-    
-    
 
-//    Getters
     public List<String> getEdgeIdList() { 
     	return new ArrayList<> (edgeIdList); 
     }
@@ -140,13 +129,15 @@ public class MapManager {
     
     
     
-    //from kkk's
     private void fetchEdgesFromSumo() throws Exception{
     	for(int i = 0; i < this.edgeIdList.size(); i++) {
-    		String edgeID = this.edgeIdList.get(i);
-    		EdgeObject edge = new EdgeObject(sumoConnection, edgeID);
-    		this.edges.put(edgeID, edge);
-    		totalEdge++;
+    		String edgeId = this.edgeIdList.get(i);
+    		EdgeClass edge = new EdgeClass(sumoConnection, edgeId);
+    		this.edges.put(edgeId, edge);
+    		Map<String, LaneClass> childLanes = edge.getLanes();
+            this.lanes.putAll(childLanes);
+    		this.totalEdge++;
+    		this.totalLane += edge.getLaneCount();
     	}
     }
     
@@ -154,20 +145,25 @@ public class MapManager {
     	//write the laneObject first
     }
     
-    private void fetchJunctionsFromSUmo() throws Exception{
-    	//write the junctionObject first
+    private void fetchJunctionsFromSumo() throws Exception{
+    	for(int i=0;i<this.junctionIdList.size();i++) {
+    		String junctionId = this.junctionIdList.get(i);
+    		JunctionClass junction = new JunctionClass(sumoConnection, junctionId);
+    		this.junctions.put(junctionId, junction);
+    		this.totalJunction++;
+    	}
     }
     
-    public Map<String, EdgeObject> getEdges() throws Exception{
+    public Map<String, EdgeClass> getEdges() throws Exception{
     	//should store this in the attributes, dont need this each step
     	return new HashMap<>(this.edges);
 	}
     
-    public Map<String, LaneObject> getLanes() throws Exception{
+    public Map<String, LaneClass> getLanes() throws Exception{
     	return new HashMap<>(this.lanes);
     }
     
-    public Map<String, JunctionObject> getJunctions() throws Exception{
+    public Map<String, JunctionClass> getJunctions() throws Exception{
     	return new HashMap<>(this.junctions);
     }
     
