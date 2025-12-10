@@ -7,10 +7,12 @@ import javafx.scene.Group;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ColorPicker;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -34,7 +36,7 @@ import javafx.scene.chart.XYChart;
 import javafx.stage.Stage;
 import java.util.Map;
 
-// Model & View Imports
+ //Model & View Imports
 import model.SimulationManager;
 import model.StatisticsManager;
 
@@ -42,6 +44,7 @@ import model.infrastructure.MapManager;
 import model.vehicles.VehicleManager;
 import view.Renderer;
 import util.CoordinateConverter; // Ensure this is imported from your util/view package
+import util.ColorConverter;
 
 // Java Imports
 import java.io.File;
@@ -93,7 +96,8 @@ public class MainController {
     @FXML private ToggleGroup vehicleTypeGroup;   // Nhóm nút chọn (để biết cái nào đang active)
     @FXML private TextField firstEdgeField;       // Ô chứa ID điểm xuất phát
     @FXML private TextField secondEdgeField;      // Ô chứa ID điểm đích
-   
+    @FXML private ColorPicker injectVehicleColorPickerButton; // <-- THÊM CÁI NÀY
+    @FXML private Slider injectVehicleSpeedSlider;
 
     // Traffic Light Actions
     @FXML private TextField trafficLightIdField;
@@ -575,25 +579,32 @@ public class MainController {
         if (uiLoop != null) {
             uiLoop.stop();
         }
-        
-        // 3. FORCE STOP the worker threads.
-        // We do this BEFORE closing the connection so they don't try to use a dead connection.
-        if (threadPool != null) {
-            threadPool.shutdownNow(); 
-            try {
-                // Optional: Give it 500ms to finish up what it's doing
-                if (!threadPool.awaitTermination(500, java.util.concurrent.TimeUnit.MILLISECONDS)) {
-                     System.out.println("Thread pool did not terminate");
-                }
-            } catch (InterruptedException e) {
-                System.out.println("Shutdown interrupted");
-            }
-        }
 
-        // 4. NOW it is safe to close the connection
-        // (Because the threads are either dead or interrupted)
         if (simManager != null) {
-            simManager.stopSimulation();
+        	simManager.stopSimulation();
+        }
+        // Gọi hàm dọn dẹp cache
+        //Khi người dùng bấm nút Stop hoặc Reset mô phỏng, bạn bắt buộc phải xóa sạch Cache này đi. Nếu không, lần chạy sau ID car_1 cũ (đang nằm ở vị trí cũ) sẽ bị nhận nhầm là car_1 mới  Xe nhảy loạn xạ.
+        if (renderer != null) {
+            renderer.clearVehicleCache();
+        }
+     // Xóa hình trên màn hình
+	        if (vehiclePane != null) {
+	            Platform.runLater(() -> vehiclePane.getChildren().clear());
+	        
+	        // 3. FORCE STOP the worker threads.
+	        // We do this BEFORE closing the connection so they don't try to use a dead connection.
+	        if (threadPool != null) {
+	            threadPool.shutdownNow(); 
+	            try {
+	                // Optional: Give it 500ms to finish up what it's doing
+	                if (!threadPool.awaitTermination(500, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+	                     System.out.println("Thread pool did not terminate");
+	                }
+	            } catch (InterruptedException e) {
+	                System.out.println("Shutdown interrupted");
+	            }
+	        }
         }
     }
     
@@ -665,9 +676,20 @@ public class MainController {
     	String firstEdgeId = this.firstEdgeField.getText();
     	String secondEdgeId = this.secondEdgeField.getText();
     	String vehicleType = null;
+    	double speed = 10;
+    	if(this.injectVehicleSpeedSlider!=null) {
+    		speed=this.injectVehicleSpeedSlider.getValue();
+    	}
     	if(this.carRadio.isSelected()) vehicleType = "DEFAULT_VEHTYPE";
     	else if(this.bikeRadio.isSelected()) vehicleType = "DEFAULT_BIKETYPE";
-    	if(this.simManager.InjectVehicle(vehicleType, 255, 255, 255, 1, 10, firstEdgeId, secondEdgeId)) {
+    	// --- XỬ LÝ MÀU SẮC ---
+        // Lấy màu từ ColorPicker (JavaFX trả về 0.0 - 1.0)
+        Color fxColor = injectVehicleColorPickerButton.getValue();
+        log(""+fxColor.getRed());
+        log("" + fxColor);
+        SumoColor sumoColor = ColorConverter.toSumoColor(fxColor);
+        log(""+sumoColor);
+    	if(this.simManager.InjectVehicle(vehicleType, sumoColor, speed, firstEdgeId, secondEdgeId)) {
     		log("Injected vehicle");    		
     	}
     	else {

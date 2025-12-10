@@ -119,7 +119,7 @@ public class VehicleManager {
 		return new HashMap<>(this.vehiclesData);
 	}
 	
-	public void injectVehicle(String vehicleId, String typeId, String routeId, int r, int g, int b, int a, double Speed) {
+	public void injectVehicle(String vehicleId, String typeId, String routeId, SumoColor sumoColor, double Speed) {
 		try {
 			int depart = 0; // depart immediately
 			double pos = 0.0;
@@ -127,10 +127,9 @@ public class VehicleManager {
 			
 			SumoCommand addCmd = Vehicle.add(vehicleId, typeId, routeId, depart, pos, Speed, lane);
 			this.conn.do_job_set(addCmd);
+			System.out.println(sumoColor);
 			
-			SumoColor color = new SumoColor(r, g, b, a);
-			
-			SumoCommand setColorCmd = Vehicle.setColor(vehicleId, color);
+			SumoCommand setColorCmd = Vehicle.setColor(vehicleId, sumoColor);
 			this.conn.do_job_set(setColorCmd);
 			System.out.println("Vehicle Injected: " + vehicleId);
 

@@ -16,6 +16,7 @@ import model.infrastructure.*;
 import it.polito.appeal.traci.*;
 import javafx.scene.control.TextField;
 import de.tudresden.sumo.cmd.*;
+import de.tudresden.sumo.objects.SumoColor;
 import de.tudresden.sumo.objects.SumoStage;
 import de.tudresden.sumo.objects.SumoStringList;
 // Import your vehicle classes
@@ -35,8 +36,8 @@ public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
-	///Users/apple/sumo/bin/sumo
-    private String sumoPath = "/Users/apple/sumo/bin/sumo"; 
+	///Users/duongquytrang/sumo/bin/sumo
+    private String sumoPath = "/Users/duongquytrang/sumo/bin/sumo";
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
@@ -286,8 +287,9 @@ public class SimulationManager {
     }
 
     /** HERE IS THE CODE OF INJECT VEHICLE, STRESSTESTING, FINDR ROUTE **/
-    public boolean InjectVehicle(String vehType, int r, int g, int b, int a, double Speed, String firstEdge, String lastEdge) {
+    public boolean InjectVehicle(String vehType, SumoColor sumoColor, double Speed, String firstEdge, String lastEdge) {
 		try {
+			System.out.println(sumoColor);
 			String routeID = "routes_" + vehicleCounter;			
 			SumoStringList edges = getRouteFromEdges(firstEdge, lastEdge, vehType);
 			if(edges == null || edges.size() == 0) {
@@ -295,8 +297,9 @@ public class SimulationManager {
 						" from edge " + firstEdge + " to edge " + lastEdge);
 				return false;
 			}
+			
 			sumoConnection.do_job_set(Route.add(routeID, edges));
-			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), vehType, routeID, r, g, b, a, Speed);
+			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), vehType, routeID, sumoColor, Speed);
 		} catch (Exception e){
 			System.out.println(e);
 		}
@@ -315,12 +318,13 @@ public class SimulationManager {
 //		System.out.println(vehicleIDs);
 //        System.out.println("Original List Size: " + vehicleIDs.size());
 //        System.out.println("Sampled List (N=" + N + "): " + randomVehicleIDs);
+		SumoColor sumoColor =  new SumoColor(0,0,0,0);
 		for(int i = 0; i < N; i++) {
 			String routeID = "route_" + vehicleCounter;
 			SumoStringList edges =  (SumoStringList) sumoConnection.do_job_get(Vehicle.getRoute(randomVehicleIDs.get(i)));
 			sumoConnection.do_job_set(Route.add(routeID, edges));
 			
-			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), "DEFAULT_VEHTYPE", routeID, 0, 0, 0, 0, standardSpeed);
+			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), "DEFAULT_VEHTYPE", routeID, sumoColor, standardSpeed);
 		}
 	}
 	public void StressTest() throws Exception {
@@ -335,12 +339,13 @@ public class SimulationManager {
 //		System.out.println(vehicleIDs);
 //        System.out.println("Original List Size: " + vehicleIDs.size());
 //        System.out.println("Sampled List (N=" + N + "): " + randomVehicleIDs);
+		SumoColor sumoColor =  new SumoColor(0,0,0,0);
 		for(int i = 0; i < N; i++) {
 			String routeID = "route_" + vehicleCounter;
 			SumoStringList edges =  (SumoStringList) sumoConnection.do_job_get(Vehicle.getRoute(randomVehicleIDs.get(i)));
 			sumoConnection.do_job_set(Route.add(routeID, edges));
 			
-			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), "DEFAULT_VEHTYPE", routeID, 0, 0, 0, 0, standardSpeed);
+			vehicleManager.injectVehicle(String.valueOf("vehicle_" + vehicleCounter++), "DEFAULT_VEHTYPE", routeID, sumoColor, standardSpeed);
 		}
 	}
 	

@@ -173,7 +173,7 @@
                                                       <Label text="Choose Vehicle Color" />
                                                       <ColorPicker fx:id="injectVehicleColorPickerButton" maxWidth="1.7976931348623157E308" />
                                                       <Label text="Choose Vehicle Speed" />
-                                                      <Slider fx:id="injectVehicleSpeedSlider" />
+                                                      <Slider fx:id="injectVehicleSpeedSlider" majorTickUnit="20.0" max="50.0" min="10.0" minorTickCount="5" showTickLabels="true" showTickMarks="true" />
                                                   <Button fx:id="injectVehicleButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#injectVehicle" styleClass="action-button" text="INJECT VEHICLE" />
                                                </children>
                                             </VBox>
