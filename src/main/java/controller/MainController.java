@@ -7,10 +7,12 @@ import javafx.scene.Group;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ColorPicker;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -42,6 +44,7 @@ import model.infrastructure.MapManager;
 import model.vehicles.VehicleManager;
 import view.Renderer;
 import util.CoordinateConverter; // Ensure this is imported from your util/view package
+import util.ColorConverter;
 
 // Java Imports
 import java.io.File;
@@ -93,7 +96,8 @@ public class MainController {
     @FXML private ToggleGroup vehicleTypeGroup;   // Nhóm nút chọn (để biết cái nào đang active)
     @FXML private TextField firstEdgeField;       // Ô chứa ID điểm xuất phát
     @FXML private TextField secondEdgeField;      // Ô chứa ID điểm đích
-   
+    @FXML private ColorPicker injectVehicleColorPickerButton; // <-- THÊM CÁI NÀY
+    @FXML private Slider injectVehicleSpeedSlider;
 
     // Traffic Light Actions
     @FXML private TextField trafficLightIdField;
@@ -579,9 +583,6 @@ public class MainController {
         if (simManager != null) {
         	simManager.stopSimulation();
         }
-        if (threadPool != null) {
-            threadPool.shutdownNow(); // This sends an "interruption" to the sleeps
-        }
         // Gọi hàm dọn dẹp cache
         //Khi người dùng bấm nút Stop hoặc Reset mô phỏng, bạn bắt buộc phải xóa sạch Cache này đi. Nếu không, lần chạy sau ID car_1 cũ (đang nằm ở vị trí cũ) sẽ bị nhận nhầm là car_1 mới  Xe nhảy loạn xạ.
         if (renderer != null) {
@@ -675,9 +676,20 @@ public class MainController {
     	String firstEdgeId = this.firstEdgeField.getText();
     	String secondEdgeId = this.secondEdgeField.getText();
     	String vehicleType = null;
+    	double speed = 10;
+    	if(this.injectVehicleSpeedSlider!=null) {
+    		speed=this.injectVehicleSpeedSlider.getValue();
+    	}
     	if(this.carRadio.isSelected()) vehicleType = "DEFAULT_VEHTYPE";
     	else if(this.bikeRadio.isSelected()) vehicleType = "DEFAULT_BIKETYPE";
-    	if(this.simManager.InjectVehicle(vehicleType, 255, 255, 255, 1, 10, firstEdgeId, secondEdgeId)) {
+    	// --- XỬ LÝ MÀU SẮC ---
+        // Lấy màu từ ColorPicker (JavaFX trả về 0.0 - 1.0)
+        Color fxColor = injectVehicleColorPickerButton.getValue();
+        log(""+fxColor.getRed());
+        log("" + fxColor);
+        SumoColor sumoColor = ColorConverter.toSumoColor(fxColor);
+        log(""+sumoColor);
+    	if(this.simManager.InjectVehicle(vehicleType, sumoColor, speed, firstEdgeId, secondEdgeId)) {
     		log("Injected vehicle");    		
     	}
     	else {

@@ -26,6 +26,7 @@ import de.tudresden.sumo.objects.SumoGeometry;   // Chứa danh sách tọa đ�
 import de.tudresden.sumo.objects.SumoPosition2D; // Tọa độ X, Y lẻ
 import model.infrastructure.MapManager;
 import model.infrastructure.TrafficlightObject;
+import util.ColorConverter;
 // --- Project Classes (Các class của nhóm bạn) ---
 import util.CoordinateConverter;
 //import cần thiết cho đèn giao thông:
@@ -468,6 +469,17 @@ public class Renderer {
 	                }
 	            }
 	            
+	            if (props.containsKey("Color")) {
+	                Object colorObj = props.get("Color");
+	                
+	                if (colorObj instanceof SumoColor) {
+	                    // DÙNG HELPER ĐỂ CHUYỂN ĐỔI NGƯỢC LẠI
+//	                	System.out.println(colorObj);
+	                    carColor = ColorConverter.toFXColor((SumoColor) colorObj);
+//	                    System.out.println(carColor);
+	                }
+	            }
+	            
 
                 // 2. KIỂM TRA TRONG CACHE
                 Polygon carShape = vehicleVisualCache.get(vehicleId);
@@ -506,12 +518,8 @@ public class Renderer {
                     carShape.setRotate(angle);
                     
                     
-                    // Set màu sắc 
-                    if (vehicleId.contains("vehicle_")) {
-                        carShape.setFill(Color.RED);
-                    } else {
-                        carShape.setFill(Color.YELLOW);
-                    }
+
+                    carShape.setFill(carColor);
                     carShape.setStrokeWidth(1);
                     
                     // Lưu info
