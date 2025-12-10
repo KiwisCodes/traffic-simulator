@@ -34,7 +34,7 @@ import javafx.scene.chart.XYChart;
 import javafx.stage.Stage;
 import java.util.Map;
 
-// Model & View Imports
+ //Model & View Imports
 import model.SimulationManager;
 import model.StatisticsManager;
 
