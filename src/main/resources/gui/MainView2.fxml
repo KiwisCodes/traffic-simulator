@@ -39,8 +39,8 @@
                           <Pane fx:id="bikeLanePane" pickOnBounds="false" />
                           <Pane fx:id="junctionPane" pickOnBounds="false" />
                           <Pane fx:id="routePane" />
-                          <Pane fx:id="trafficLightPane" pickOnBounds="false" />
                           <Pane fx:id="vehiclePane" pickOnBounds="false" />
+                          <Pane fx:id="trafficLightPane" pickOnBounds="false" />
                        </children>
                     </Group>
                     <Pane fx:id="busPane" pickOnBounds="false" />
@@ -170,17 +170,10 @@
                                                             <TextField fx:id="secondEdgeField" editable="false" promptText="Second Edge ID" styleClass="read-only-field" />
                                                          </children>
                                                       </VBox>
-                                                      <ColorPicker maxWidth="1.7976931348623157E308" />
-                                                      <Slider />
-                                                  
-                                                  <HBox spacing="5.0">
-                                                     <TextField fx:id="vehicleSpeedField" promptText="Speed (m/s)" HBox.hgrow="ALWAYS" />
-                                                     <Button fx:id="setVehicleSpeedButton" styleClass="small-button" text="Set" />
-                                                  </HBox>
-                                                  <HBox spacing="5.0">
-                                                     <TextField fx:id="vehicleColorField" promptText="Color (R,G,B)" HBox.hgrow="ALWAYS" />
-                                                     <Button fx:id="setVehicleColorButton" styleClass="small-button" text="Set" />
-                                                  </HBox>
+                                                      <Label text="Choose Vehicle Color" />
+                                                      <ColorPicker fx:id="injectVehicleColorPickerButton" maxWidth="1.7976931348623157E308" />
+                                                      <Label text="Choose Vehicle Speed" />
+                                                      <Slider fx:id="injectVehicleSpeedSlider" />
                                                   <Button fx:id="injectVehicleButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#injectVehicle" styleClass="action-button" text="INJECT VEHICLE" />
                                                </children>
                                             </VBox>
