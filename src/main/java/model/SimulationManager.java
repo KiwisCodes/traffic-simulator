@@ -35,12 +35,13 @@ public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
-    private String sumoPath = ""; 
+	///Users/apple/sumo/bin/sumo
+    private String sumoPath = "/Users/apple/sumo/bin/sumo"; 
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
     // Step length in seconds (0.001s is very granular/fast)
-    private String stepLength = "0.1"; 
+//    private String stepLength = "0.05"; 
 
     // --- TraCI Connection ---
     private SumoTraciConnection sumoConnection;
@@ -91,12 +92,12 @@ public class SimulationManager {
         
         this.sumoConnection = new SumoTraciConnection(this.sumoPath, this.sumoConfigFilePath);
         this.sumoConnection.addOption("start", null); // Auto-start simulation
-        this.sumoConnection.addOption("step-length", this.stepLength);
+//        this.sumoConnection.addOption("step-length", this.stepLength);
         this.sumoConnection.printSumoOutput(true);
         this.sumoConnection.printSumoError(true);
 
         try {
-            System.out.println("⏳ Launching SUMO... (This may pause until TraCI connects)");
+            System.out.println("Launching SUMO... (This may pause until TraCI connects)");
             this.sumoConnection.runServer(); // Starts the SUMO process
             
             if(this.sumoConnection.isClosed()) {

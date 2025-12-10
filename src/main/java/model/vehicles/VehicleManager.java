@@ -44,8 +44,17 @@ public class VehicleManager {
 				
 			}
 			this.vehiclesData = new HashMap<>();
+			//chekc if there is still connection before updateVehicleInfo();
+			if(this.conn == null || this.conn.isClosed()) {
+				return;
+			}
 			this.updateVehiclesInfo();
-		} catch (Exception e) {
+		} catch (IllegalStateException e){
+			//hung added this exceptoin
+			System.out.println("VehicleManager: Connection closed. Stopping updates.");
+	        this.vehiclesIds = new ArrayList<>(); 
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
@@ -53,6 +62,13 @@ public class VehicleManager {
 	private void updateVehiclesInfo() {
 		
 		for (String id: this.vehiclesIds) {
+			
+			//check for connection while updating;
+			if(this.conn == null || this.conn.isClosed()) {
+				return;
+			}
+			
+			
 			Map<String, Object> vehicleAttributes = new HashMap<>();
 			
 			try {

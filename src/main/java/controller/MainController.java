@@ -196,12 +196,12 @@ public class MainController {
     // --- Initialization ---
 
     public MainController() {
-		this.uiQueue = new SimulationQueue(1);
+		this.uiQueue = new SimulationQueue(2);
 		this.statsManager = new StatisticsManager();
         this.simManager = new SimulationManager(uiQueue, this.statsManager);
         this.renderer = new Renderer();
         this.threadPool = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
-        this.statQueue = new SimulationQueue(1);
+        this.statQueue = new SimulationQueue(2);
     }
     
     // Main entry point if running stand alone (optional)
@@ -374,14 +374,31 @@ public class MainController {
             			continue;
                 	}
                     try {
+                    	this.simManager.step();
+                    	if(this.simManager == null) {
+                    		log("Simulation Manager is now null, maybe no more connection");
+                    		isSimulationRunning = false;
+                    		break;
+                    	}
                     	SimulationState simulationState = this.simManager.getState();
-                        this.simManager.step();
+                    	if(simulationState == null) {
+                    		log("Current state is null, maybe no connection");
+                    		isSimulationRunning = false;
+                    		break;
+                    	}
                         this.uiQueue.offerState(simulationState);// by this we dont get interrupted, unlike putState
                         this.statQueue.offerState(simulationState);
                         currentStep++;
-                        Thread.sleep(10);
+//                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        // 1. This catches the "Stop" signal while sleeping
+                        System.out.println("Simulation loop interrupted. Stopping safely.");
+                        break; // Exit the loop cleanly
                     } catch (Exception e) {
+                        // 2. This catches actual crashes
+                        System.err.println("Unexpected error in simulation loop:");
                         e.printStackTrace();
+                        break;
                     }
                 }
             });
@@ -550,18 +567,34 @@ public class MainController {
 
     public void stopSimulation() {
         System.out.println("Stopping simulation...");
+        
+        // 1. Tell the loop logic to stop
         isSimulationRunning = false;
         
+        // 2. Stop the UI update timer first (it's fast)
         if (uiLoop != null) {
             uiLoop.stop();
         }
-        if (simManager != null) {
-        	simManager.stopSimulation();
-        }
-        if (threadPool != null) {
-            threadPool.shutdownNow(); // This sends an "interruption" to the sleeps
-        }
         
+        // 3. FORCE STOP the worker threads.
+        // We do this BEFORE closing the connection so they don't try to use a dead connection.
+        if (threadPool != null) {
+            threadPool.shutdownNow(); 
+            try {
+                // Optional: Give it 500ms to finish up what it's doing
+                if (!threadPool.awaitTermination(500, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                     System.out.println("Thread pool did not terminate");
+                }
+            } catch (InterruptedException e) {
+                System.out.println("Shutdown interrupted");
+            }
+        }
+
+        // 4. NOW it is safe to close the connection
+        // (Because the threads are either dead or interrupted)
+        if (simManager != null) {
+            simManager.stopSimulation();
+        }
     }
     
     private void disableButtons(boolean state) {
@@ -601,8 +634,14 @@ public class MainController {
 			this.statQueue.offerState(newSimulationState);
 			log("Step Forward -> " + currentStep);
 		} catch (InterruptedException e) {
-			log("Error stepping: " + e.getMessage());
-			e.printStackTrace();
+		    // 1. This catches the "Stop" signal while sleeping
+		    System.out.println("Simulation loop interrupted. Stopping safely.");
+		    return;
+		} catch (Exception e) {
+		    // 2. This catches actual crashes
+		    System.err.println("Unexpected eclrror in simulation loop:");
+		    e.printStackTrace();
+		    return;
 		}
     	
     }
