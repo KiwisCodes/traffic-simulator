@@ -561,7 +561,15 @@ public class MainController {
         if (threadPool != null) {
             threadPool.shutdownNow(); // This sends an "interruption" to the sleeps
         }
-        
+        // Gọi hàm dọn dẹp cache
+        //Khi người dùng bấm nút Stop hoặc Reset mô phỏng, bạn bắt buộc phải xóa sạch Cache này đi. Nếu không, lần chạy sau ID car_1 cũ (đang nằm ở vị trí cũ) sẽ bị nhận nhầm là car_1 mới  Xe nhảy loạn xạ.
+        if (renderer != null) {
+            renderer.clearVehicleCache();
+        }
+     // Xóa hình trên màn hình
+        if (vehiclePane != null) {
+            Platform.runLater(() -> vehiclePane.getChildren().clear());
+        }
     }
     
     private void disableButtons(boolean state) {
