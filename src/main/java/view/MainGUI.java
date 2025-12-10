@@ -17,7 +17,7 @@ import controller.MainController;
 
 public class MainGUI extends Application {
 	// Reference the new main view file
-	private static final String FXML_VIEW = "/gui/testDrawMap.fxml"; 
+	private static final String FXML_VIEW = "/gui/MainView2.fxml"; 
 	
 	public static int windowWidth = 1400;
 	public static int windowHeight = 900;

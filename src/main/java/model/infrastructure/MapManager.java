@@ -5,7 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import model.infrastructure.EdgeObject;
+import model.infrastructure.EdgeClass;
+import model.infrastructure.LaneClass;
 import de.tudresden.sumo.cmd.Edge;
 import de.tudresden.sumo.cmd.Junction;
 import de.tudresden.sumo.cmd.Lane;
@@ -17,19 +18,22 @@ import de.tudresden.ws.container.SumoBoundingBox; // Or use simple doubles
 import it.polito.appeal.traci.SumoTraciConnection;
 
 public class MapManager {
-//	Sumo Connection
 	private SumoTraciConnection sumoConnection;
-	public int totalEdge = 0;
+	private int totalEdge = 0;
+	private int totalLane = 0;
+	private int totalJunction = 0;
 
-//    Static Network Data
     private List<String> edgeIdList;
     private List<String> laneIdList;
-    private List<String> junctionIds;
-//    private List<String> routeIds; this does not exist
+    private List<String> junctionIdList;
     private SumoBoundingBox sumoBoundingBox;
     
+    private Map<String, EdgeClass> edges;
+    private Map<String, LaneClass> lanes;
+    private Map<String, JunctionClass> junctions;
     
-//     Map Dimensions (for the Renderer)
+    
+    //i use this for the converter
     private double minX = Double.MAX_VALUE;
     private double minY = Double.MAX_VALUE;
     private double maxX = Double.MIN_VALUE;
@@ -39,24 +43,32 @@ public class MapManager {
         if(!sumoConnection.isClosed()) {
         	try {
         		this.sumoConnection = sumoConnection;
-				Object result = sumoConnection.do_job_get(Edge.getIDList());
+				Object response = sumoConnection.do_job_get(Edge.getIDList());
 				@SuppressWarnings("unchecked")
-				List<String> edges = (List<String>)result;
+				List<String> edges = (List<String>)response;
 				this.edgeIdList = edges;
-				result = sumoConnection.do_job_get(Junction.getIDList());
+				response = sumoConnection.do_job_get(Junction.getIDList());
 				@SuppressWarnings("unchecked")
-				List<String> junctions = (List<String>)result;
-				this.junctionIds = junctions;
-				result = sumoConnection.do_job_get(Lane.getIDList());
+				List<String> junctions = (List<String>)response;
+				this.junctionIdList = junctions;
+				response = sumoConnection.do_job_get(Lane.getIDList());
 				@SuppressWarnings("unchecked")
-				List<String> lanes = (List<String>)result;
+				List<String> lanes = (List<String>)response;
 				this.laneIdList = lanes;
-				result = sumoConnection.do_job_get(Simulation.getNetBoundary());
-				@SuppressWarnings("deprecation")
+				response = sumoConnection.do_job_get(Simulation.getNetBoundary());
+				
+				this.edges = new HashMap<>();
+				this.lanes = new HashMap<>();
+				this.junctions = new HashMap<>();
+				
+				
+				fetchEdgesFromSumo();//this also fetch lanes from Sumo
+				fetchJunctionsFromSumo();
+				
 				
 				
 				SumoCommand getNetBoundary = Simulation.getNetBoundary();
-				Object response = this.sumoConnection.do_job_get(getNetBoundary);
+				response = this.sumoConnection.do_job_get(getNetBoundary);
 				
 				if(response instanceof SumoBoundingBox) {
 					SumoBoundingBox box = (SumoBoundingBox) response;
@@ -80,36 +92,33 @@ public class MapManager {
 				}
 				
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
+				System.err.println(e.getMessage());
 				e.printStackTrace();
 			}
         }
     }
 
-//     Setters (Called by SimulationManager when loading)
-    public void setEdgeIds(List<String> edges) { this.edgeIdList = edges; }
-    public void setBounds(double minX, double minY, double maxX, double maxY) {
-        this.minX = minX;
-        this.minY = minY;
-        this.maxX = maxX;
-        this.maxY = maxY;
+
+//    public void setEdgeIds(List<String> edges) { this.edgeIdList = edges; }
+//    public void setBounds(double minX, double minY, double maxX, double maxY) {
+//        this.minX = minX;
+//        this.minY = minY;
+//        this.maxX = maxX;
+//        this.maxY = maxY;
+//    }
+
+
+    public List<String> getEdgeIdList() { 
+    	return new ArrayList<> (edgeIdList); 
     }
-
-//     Verification Helpers
-    public boolean isValidEdge(String id) {
-        return edgeIdList.contains(id);
+    public List<String> getLaneIdList() { 
+    	return new ArrayList<>(laneIdList); 
     }
-
+    public List<String> getJunctionIdList() { 
+    	return new ArrayList<> (junctionIdList);
+    }
     
     
-    
-    
-    
-
-//    Getters
-    public List<String> getEdgeIds() { return edgeIdList; }
-    public List<String> getLaneIds() { return new ArrayList<>(laneIdList); }
-    public List<String> getJunctionIds() { return junctionIds; }
     public double getWidth() { return maxX - minX; }
     public double getHeight() { return maxY - minY; }
     public double getMinX() { return minX; }
@@ -120,16 +129,42 @@ public class MapManager {
     
     
     
-    //from kkk's
-    public Map<String, EdgeObject> getEdges() throws Exception{
-		Map<String, EdgeObject> edges = new HashMap<>();
-		List<String> edgeIDs = (List<String>) sumoConnection.do_job_get(Edge.getIDList());
-		for(int i = 0; i < edgeIDs.size(); i++) {
-			String edgeID = edgeIDs.get(i);
-			EdgeObject edge = new EdgeObject(sumoConnection, edgeID);
-			edges.put(edgeID, edge);
-			totalEdge++;
-		}
-		return edges;
+    private void fetchEdgesFromSumo() throws Exception{
+    	for(int i = 0; i < this.edgeIdList.size(); i++) {
+    		String edgeId = this.edgeIdList.get(i);
+    		EdgeClass edge = new EdgeClass(sumoConnection, edgeId);
+    		this.edges.put(edgeId, edge);
+    		Map<String, LaneClass> childLanes = edge.getLanes();
+            this.lanes.putAll(childLanes);
+    		this.totalEdge++;
+    		this.totalLane += edge.getLaneCount();
+    	}
+    }
+    
+    private void fetchLanesFromSumo() throws Exception{
+    	//write the laneObject first
+    }
+    
+    private void fetchJunctionsFromSumo() throws Exception{
+    	for(int i=0;i<this.junctionIdList.size();i++) {
+    		String junctionId = this.junctionIdList.get(i);
+    		JunctionClass junction = new JunctionClass(sumoConnection, junctionId);
+    		this.junctions.put(junctionId, junction);
+    		this.totalJunction++;
+    	}
+    }
+    
+    public Map<String, EdgeClass> getEdges() throws Exception{
+    	//should store this in the attributes, dont need this each step
+    	return new HashMap<>(this.edges);
 	}
+    
+    public Map<String, LaneClass> getLanes() throws Exception{
+    	return new HashMap<>(this.lanes);
+    }
+    
+    public Map<String, JunctionClass> getJunctions() throws Exception{
+    	return new HashMap<>(this.junctions);
+    }
+    
 }
