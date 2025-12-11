@@ -12,7 +12,6 @@ import java.util.Map;
 import controller.MainController;
 import model.infrastructure.*;
 import data.SimulationQueue;
-import model.infrastructure.*;
 import it.polito.appeal.traci.*;
 import javafx.scene.control.TextField;
 import de.tudresden.sumo.cmd.*;
@@ -35,7 +34,7 @@ public class SimulationManager {
 
     // --- Configuration ---
     // Adjust this path to match your system
-    private String sumoPath = ""; 
+    private String sumoPath = "C:\\PROGRA~2\\Eclipse\\Sumo\\bin\\sumo.exe"; 
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
@@ -380,11 +379,29 @@ public class SimulationManager {
     
 
     public StatisticsManager getStatisticsManager() { return statisticsManager; }
+    public TrafficlightManager getTrafficlightManager() { return trafficlightManager; }
     public ReportManager getReportManager() { return reportManager; }
 //    public int getCurrentStep() { return currentStep; } // Volatile makes this safe
     public SumoTraciConnection getConnection() { return sumoConnection; }
     public MapManager getMapManager() { return mapManager; }
+    public double getStepLength() {
+	    	boolean check_validity = false;
+	    	try {
+	    		double val = Double.parseDouble(this.stepLength);
+	        if(val >= 0) {
+	        		check_validity = true;
+	        }
+	    } catch (NumberFormatException e) {
+	    		check_validity = false;
+	    }
+	    	if(!check_validity) {
+	    		return -1;
+	    	}
+	    	else {
+	    		return Double.parseDouble(this.stepLength);
+	    	}
+    }
     public SimulationState getState() {
-    	return this.simulationState;
+    		return this.simulationState;
     }
 }

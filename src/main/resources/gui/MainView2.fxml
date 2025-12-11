@@ -187,24 +187,28 @@
                                           </content>
                                         </TitledPane>
                                         
-                                        <TitledPane text="Traffic Lights">
+                                        <TitledPane fx:id="trafficLightControlPane" text="Traffic Lights">
                                           <content>
                                             <VBox spacing="10.0">
                                                <children>
-                                                  <Label text="Select Traffic Light on map" textFill="#666666" />
-                                                  <TextField fx:id="trafficLightIdField" editable="false" promptText="TL ID" />
+                                               	 <Label style="-fx-font-size: 11px;" text="Select Traffic Light ID on map" textFill="#666666" />
+                                               	 <TextField fx:id="trafficLightIdField" editable="false" promptText="TL ID" styleClass="read-only-field" />
+                                                  <Label text="Set Color and/or Duration for the Traffic Light" textFill="#666666" />
                                                   <HBox alignment="TOP_CENTER" spacing="5.0">
                                                      <Button fx:id="setRedPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="danger-button" text="Red" HBox.hgrow="ALWAYS" />
                                                          <Region prefHeight="26.0" prefWidth="0.0" />
-                                                         <Button fx:id="setRedPhaseButton1" maxWidth="1.7976931348623157E308" minWidth="80.0" mnemonicParsing="false" styleClass="danger-button" text="Yellow" />
+                                                         <Button fx:id="setYellowPhaseButton" maxWidth="1.7976931348623157E308" minWidth="80.0" mnemonicParsing="false" styleClass="warning-button" text="Yellow" />
                                                          <Region prefHeight="26.0" prefWidth="0.0" />
                                                      <Button fx:id="setGreenPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" prefHeight="26.0" prefWidth="52.0" styleClass="success-button" text="Green" HBox.hgrow="ALWAYS" />
                                                   </HBox>
                                                   <HBox spacing="5.0">
                                                       <TextField fx:id="phaseDurationField" promptText="Duration (s)" HBox.hgrow="ALWAYS" />
-                                                      <Button fx:id="setPhaseDurationButton" styleClass="small-button" text="Set" />
+                                                      <!--<Button fx:id="setPhaseDurationButton" styleClass="small-button" text="Set" />-->
                                                   </HBox>
-                                                  <CheckBox fx:id="adaptiveTrafficCheck" text="Adaptive Mode" />
+                                                  <Button fx:id="setTrafficLightColorandorDurationButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#setTrafficLightColorandorDuration" styleClass="action-button" text="SET COLOR AND/OR DURATION" />
+                                                  <!--<CheckBox fx:id="adaptiveTrafficCheck" text="Adaptive Mode" />*/-->
+                                                  <Label text="Switch Traffic Light onto the next Phase" textFill="#666666" />
+                                                  <Button fx:id="switchTrafficLightPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#switchTrafficLightPhase" styleClass="action-button" text="SWITCH TO THE NEXT PHASE" />
                                                </children>
                                             </VBox>
                                           </content>

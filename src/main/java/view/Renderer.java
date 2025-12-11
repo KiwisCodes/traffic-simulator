@@ -24,6 +24,7 @@ import de.tudresden.sumo.cmd.Lane;           // Lệnh lấy thông tin Lane
 import de.tudresden.sumo.cmd.Junction;       // Lệnh lấy thông tin Junction
 import de.tudresden.sumo.objects.SumoGeometry;   // Chứa danh sách tọa độ hình dáng
 import de.tudresden.sumo.objects.SumoPosition2D; // Tọa độ X, Y lẻ
+import de.tudresden.sumo.objects.SumoLink;
 import model.infrastructure.MapManager;
 import model.infrastructure.TrafficlightObject;
 // --- Project Classes (Các class của nhóm bạn) ---
@@ -67,11 +68,9 @@ public class Renderer {
         HOVER_GLOW.setSpread(0.6);
         
         //Khang's
-        this.tl_color_map.put('r', Color.RED);                         // red
-		this.tl_color_map.put('R', Color.rgb(255, 80, 80));            // bright_red
+		this.tl_color_map.put('r', Color.rgb(255, 80, 80));            // bright_red
 
-		this.tl_color_map.put('y', Color.YELLOW);                      // yellow
-		this.tl_color_map.put('Y', Color.rgb(255, 255, 120));          // bright_yellow
+		this.tl_color_map.put('y', Color.rgb(255, 255, 120));          // yellow
 
 		this.tl_color_map.put('g', Color.GREEN);                       // green
 		this.tl_color_map.put('G', Color.rgb(120, 255, 120));          // bright_green
@@ -548,101 +547,90 @@ public class Renderer {
 	    
 		}
 	//Khang
-	public void renderTrafficLights(Pane trafficLightPane, Map<TrafficlightObject,Character>trafficLightsData) {
+	public void renderTrafficLights(Pane trafficLightPane, Map<TrafficlightObject,Character>trafficLightsData, Consumer<TrafficlightObject> onTrafficLightClick) {
 		
-		trafficLightPane.getChildren().clear();
-	
-	    if (trafficLightsData == null || trafficLightsData.isEmpty()) {
-	    		System.out.println("Empty traffic light map");
+		if (trafficLightsData == null || trafficLightsData.isEmpty()) {
+	        System.out.println("Empty traffic light map");
 	        return;
 	    }
-	
-	    for (TrafficlightObject tl_link : trafficLightsData.keySet()) {
-	    		Character tl_color_char = trafficLightsData.get(tl_link);
-	    		try {
-	    			SumoPosition2D tmp_pos = tl_link.get_position();
-	            double simX = tmp_pos.x;
-	            double simY = tmp_pos.y;
-	            double screenX = this.converter.toScreenX(simX);
-	            double screenY = this.converter.toScreenY(simY);
-	            Group lightGroup = new Group();
-	
-	            // Housing
-	            Rectangle box = new Rectangle(-0.75, -2.125, 1.5, 4.25); 
-	            box.setArcWidth(0.75);  
-	            box.setArcHeight(0.75);  
-	            box.setFill(Color.rgb(30, 30, 30)); // keep color
-	            box.setStroke(Color.BLACK);
-	
-	            // Lamps
-	            Character red_lamp = 'a';
-	            Character yellow_lamp = 'b';
-	            Character green_lamp = 'c';
-	            if(tl_color_char == 'R' || tl_color_char == 'r') {
-	                red_lamp = tl_color_char;
+
+	    // Check if traffic lights already exist
+	    if (trafficLightPane.getChildren().isEmpty()) {
+	        // First time: create all traffic lights
+	        for (TrafficlightObject tl_link : trafficLightsData.keySet()) {
+	            Character tl_color_char = trafficLightsData.get(tl_link);
+	            try {
+	                SumoPosition2D pos = tl_link.get_position();
+	                double screenX = converter.toScreenX(pos.x);
+	                double screenY = converter.toScreenY(pos.y);
+
+	                Group lightGroup = new Group();
+	                // Housing
+	                Rectangle box = new Rectangle(-0.75, -2.125, 1.5, 4.25);
+	                box.setArcWidth(0.75);
+	                box.setArcHeight(0.75);
+	                box.setFill(Color.rgb(30, 30, 30));
+	                box.setStroke(Color.BLACK);
+
+	                // Circles
+	                Circle redLamp = new Circle(0, -1.125, 0.5);
+	                Circle yellowLamp = new Circle(0, 0, 0.5);
+	                Circle greenLamp = new Circle(0, 1.125, 0.5);
+
+	                redLamp.setId("red");
+	                yellowLamp.setId("yellow");
+	                greenLamp.setId("green");
+
+	                lightGroup.getChildren().addAll(box, redLamp, yellowLamp, greenLamp);
+	                lightGroup.setTranslateX(screenX);
+	                lightGroup.setTranslateY(screenY);
+	                lightGroup.setUserData(tl_link);
+
+	                // Click & Hover
+	                lightGroup.setOnMouseClicked(e -> {
+	                    if (onTrafficLightClick != null) {
+	                        onTrafficLightClick.accept(tl_link);
+	                    }
+	                });
+	                lightGroup.setOnMouseEntered(e -> {
+	                    lightGroup.setEffect(HOVER_GLOW);
+	                    lightGroup.setCursor(Cursor.HAND);
+	                });
+	                lightGroup.setOnMouseExited(e -> {
+	                    lightGroup.setEffect(null);
+	                    lightGroup.setCursor(Cursor.DEFAULT);
+	                });
+
+	                trafficLightPane.getChildren().add(lightGroup);
+
+	            } catch (Exception e) {
+	                e.printStackTrace();
 	            }
-	            else if(tl_color_char == 'G' || tl_color_char == 'g') {
-	                green_lamp = tl_color_char;
+	        }
+	    }
+
+	    // Update colors of all existing traffic lights
+	    for (var node : trafficLightPane.getChildren()) {
+	        if (!(node instanceof Group)) continue;
+	        Group lightGroup = (Group) node;
+	        TrafficlightObject tl_link = (TrafficlightObject) lightGroup.getUserData();
+	        Character tl_color_char = trafficLightsData.get(tl_link);
+	        if (tl_color_char == null) continue; // skip if no data
+
+	        for (var child : lightGroup.getChildren()) {
+	            if (!(child instanceof Circle)) continue;
+	            Circle lamp = (Circle) child;
+	            switch (lamp.getId()) {
+	                case "red" -> {
+	                    lamp.setFill((tl_color_char == 'r') ? tl_color_map.get(tl_color_char) : tl_color_map.get('a'));
+	                }
+	                case "yellow" -> {
+	                    lamp.setFill((tl_color_char == 'y' || tl_color_char == 'O' || tl_color_char == 'o') ? tl_color_map.get(tl_color_char) : tl_color_map.get('b'));
+	                }
+	                case "green" -> {
+	                    lamp.setFill((tl_color_char == 'G' || tl_color_char == 'g') ? tl_color_map.get(tl_color_char) : tl_color_map.get('c'));
+	                }
 	            }
-	            else if(tl_color_char == 'Y' || tl_color_char == 'y') {
-	                yellow_lamp = tl_color_char;
-	            }
-	            else {
-	                yellow_lamp = tl_color_char; // 'o' or 'O'
-	            }
-	
-	            // Circles (lamps)
-	            Circle redLamp = new Circle(0, -1.125, 0.5, this.tl_color_map.get(red_lamp));
-	            Circle yellowLamp = new Circle(0, 0, 0.5, this.tl_color_map.get(yellow_lamp));
-	            Circle greenLamp = new Circle(0, 1.125, 0.5, this.tl_color_map.get(green_lamp));
-	
-	            redLamp.setId("red");
-	            yellowLamp.setId("yellow");
-	            greenLamp.setId("green");
-	
-	            lightGroup.getChildren().addAll(box, redLamp, yellowLamp, greenLamp);
-	
-	            lightGroup.setTranslateX(screenX);
-	            lightGroup.setTranslateY(screenY);
-	            lightGroup.setUserData(tl_color_char);
-	
-	
-	//            // --- BƯỚC 5: XỬ LÝ CLICK (Quan trọng!) ---
-	//            // Vì UserData giờ là Map, nên khi lấy ra phải ép kiểu về Map
-	//            carShape.setOnMouseClicked(e -> {
-	//                // Lấy lại gói hàng
-	//                Map<String, Object> clickedInfo = (Map<String, Object>) carShape.getUserData();
-	//                
-	//                // Lấy ID từ trong gói hàng ra
-	//                String clickedId = (String) clickedInfo.get("vehicleId");
-	//                
-	//                // In thử ra Console để kiểm chứng là đã lưu đủ thông tin
-	//                System.out.println("Bạn vừa click vào xe: " + clickedInfo); 
-	//                
-	//                // (Tạm thời) Vẫn gửi ID về Controller để điền vào ô Text
-	//                // Nếu sau này bạn muốn gửi cả cục data về Controller thì sửa Consumer sau
-	//                // Hiện tại MainController đang đợi String, nên mình gửi String
-	//                // Bạn cần truyền consumer vào hàm này nếu chưa có, hoặc xử lý tạm ở đây
-	//                System.out.println("Selected Vehicle ID: " + clickedId);
-	//            });
-	//            
-	//            // Hiệu ứng chuột
-	//            carShape.setOnMouseEntered(e -> {
-	//                carShape.setEffect(HOVER_GLOW);
-	//                carShape.setCursor(Cursor.HAND);
-	//            });
-	//            carShape.setOnMouseExited(e -> {
-	//                carShape.setEffect(null);
-	//                carShape.setCursor(Cursor.DEFAULT);
-	//            });
-	
-	            trafficLightPane.getChildren().add(lightGroup);
-//	            System.out.println("Added traffic light: " + tl_link.get_link_index());
-	
-	        } catch (Exception e) {
-	        	System.err.println("CRASHED while rendering traffic light: " + tl_link.get_link_index());
-	            e.printStackTrace(); 
-	            continue;
 	        }
 	    }
 	}

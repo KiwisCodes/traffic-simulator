@@ -59,11 +59,12 @@ import de.tudresden.sumo.objects.SumoColor;
 import java.util.HashMap;
 import de.tudresden.ws.container.SumoPosition2D; // Sửa lỗi SumoPosition2D
 import de.tudresden.sumo.objects.SumoColor;     // Sửa lỗi SumoColor (chắc chắn bạn sẽ bị tiếp theo)
-
+import de.tudresden.sumo.objects.SumoLink; 
 // Thêm để vẽ xe chuyển 
 import javafx.animation.AnimationTimer;
 import data.SimulationState;
-
+import model.infrastructure.TrafficlightManager;
+import model.infrastructure.TrafficlightObject;
 import data.SimulationQueue;
 import data.SimulationState;
 import view.ChartWindow;
@@ -96,13 +97,20 @@ public class MainController {
    
 
     // Traffic Light Actions
+    @FXML private TitledPane trafficLightControlPane;
     @FXML private TextField trafficLightIdField;
     @FXML private Button setRedPhaseButton;
+    @FXML private Button setYellowPhaseButton;
     @FXML private Button setGreenPhaseButton;
     @FXML private Button resumeAutoButton;
-    @FXML private Button setPhaseDurationButton;
+    @FXML private Button setTrafficLightColorandorDurationButton;
     @FXML private TextField phaseDurationField;
-    @FXML private CheckBox adaptiveTrafficCheck;
+    @FXML private Button switchTrafficLightPhaseButton;
+    private Button selectedColorButton = null; // keep track of which button is selected
+    private Consumer<TrafficlightObject> trafficLightClickHandler;
+    private TrafficlightObject currentTrafficLightLink;
+
+//    @FXML private CheckBox adaptiveTrafficCheck;
 
     // Filtering
     @FXML private TextField filterColorField;
@@ -168,6 +176,7 @@ public class MainController {
 //    Logic & State
     private SimulationManager simManager;
     private StatisticsManager statsManager;
+    private TrafficlightManager trafficLightManager;
     private Renderer renderer; 
     private ChartWindow chartWindow;
     
@@ -287,6 +296,11 @@ public class MainController {
             });
         }
         
+        //khang's traffic light
+        setRedPhaseButton.setOnAction(e -> toggleColorButton(setRedPhaseButton));
+        setYellowPhaseButton.setOnAction(e -> toggleColorButton(setYellowPhaseButton));
+        setGreenPhaseButton.setOnAction(e -> toggleColorButton(setGreenPhaseButton));
+        
     }
 
     @FXML 
@@ -300,6 +314,7 @@ public class MainController {
             isSimulationRunning = true;
             disableButtons(false);
             MapManager mapManager = this.simManager.getMapManager();
+            this.trafficLightManager = this.simManager.getTrafficlightManager();
             this.renderer.setConverter(mapManager);
 
             Consumer<String> laneClickHandler = (laneId) -> {
@@ -327,6 +342,18 @@ public class MainController {
                 } else {
                     // Nếu menu đang đóng thì chỉ in log xem chơi
                     log("Edge ID: " + edgeId); 
+                }
+            };
+            
+            trafficLightClickHandler = (trafficLightLink) -> {
+                // 1. Kiểm tra xem Menu thêm đèn có đang mở không?
+                if (trafficLightControlPane != null && trafficLightControlPane.isExpanded()) {
+                    	trafficLightIdField.setText(trafficLightLink.get_link_id().toString());
+                    	this.currentTrafficLightLink = trafficLightLink;
+                    log("Selected Traffic Light: " + trafficLightLink.get_link_id().toString());   
+                } else {
+                    // Nếu menu đang đóng thì chỉ in log xem chơi
+                    log("Traffic Light ID: " + trafficLightLink.get_link_id().toString()); 
                 }
             };
             
@@ -452,7 +479,7 @@ public class MainController {
 			if(simulationState == null) return;
 			
 			this.renderer.renderVehicles(vehiclePane, simulationState.getVehicles());
-			this.renderer.renderTrafficLights(trafficLightPane, simulationState.getTrafficLights());
+			this.renderer.renderTrafficLights(trafficLightPane, simulationState.getTrafficLights(), trafficLightClickHandler);
 			
 			int currentVehicleCount = simulationState.getVehicles().size();
 			updateCurrentStep();
@@ -635,6 +662,121 @@ public class MainController {
     		log("Fail injecting vehicle");
     	}
     }
+    
+    @FXML private void switchTrafficLightPhase() {
+	    	if(this.trafficLightIdField.getText().isEmpty() || this.currentTrafficLightLink == null) {
+	    		log("Please choose a Traffic Light please");
+	    		return;
+	    	}
+	    	this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, 0.0);
+	    	log("Switched to the next Phase");
+    		return;
+    }
+    
+    @FXML private void setTrafficLightColorandorDuration() {
+	    	if(this.trafficLightIdField.getText().isEmpty() || this.currentTrafficLightLink == null) {
+	    		log("Please choose a Traffic Light please");
+	    		return;
+	    	}
+	    	if(this.phaseDurationField.getText().isEmpty() && this.selectedColorButton == null) {
+	    		log("Please choose a color and/or duration to set");
+	    		return;
+	    	}
+	    	else if(!this.phaseDurationField.getText().isEmpty() && this.selectedColorButton == null) {
+	    		boolean check_validity = false;
+		    	try {
+		    		double val = Double.parseDouble(this.phaseDurationField.getText());
+		        if(val >= 0) {
+		        		check_validity = true;
+		        }
+		    } catch (NumberFormatException e) {
+		    		check_validity = false;
+		    }
+		    	if(!check_validity) {
+		    		log("Duration must be non-negative double.");
+		    		return;
+		    	}
+		    	else {
+		    		this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, Double.parseDouble(this.phaseDurationField.getText()));
+		    		log("Duration of this phase is set to " + Double.parseDouble(this.phaseDurationField.getText()) + "s.");
+		    	}
+	    	}
+	    	else if(this.phaseDurationField.getText().isEmpty() && this.selectedColorButton != null) {
+//	    		double next_switch = this.trafficLightManager.getTrafficLightNextSwitch(this.currentTrafficLightLink);
+//	    		double current_time = 0;
+//	    		if(this.simManager.getStepLength() != -1) {
+//	    			current_time = MainController.currentStep * this.simManager.getStepLength(); 
+//	    		}
+//	    		else {
+//	    			log("Your step length is under wrong format");
+//	    		}
+	    		if(this.selectedColorButton == setRedPhaseButton) {
+	    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'r');
+	    			log("Color of Traffic Light is set to Red");
+	    		}
+	    		else if(this.selectedColorButton == setYellowPhaseButton) {
+	    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'y');
+	    			log("Color of Traffic Light is set to Yellow");
+	    		}
+	    		else if(this.selectedColorButton == setGreenPhaseButton) {
+	    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'G');
+	    			log("Color of Traffic Light is set to Green");
+	    		}
+//	    		if(next_switch > current_time) {
+//	    			this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, next_switch - current_time);
+//	    		}
+//	    		else {
+//	    			log("Your next switch is not after current time");
+//	    		}
+	    	}
+	    	else {
+	    		boolean check_validity = false;
+		    	try {
+		    		double val = Double.parseDouble(this.phaseDurationField.getText());
+		        if(val >= 0) {
+		        		check_validity = true;
+		        }
+		    } catch (NumberFormatException e) {
+		    		check_validity = false;
+		    }
+		    	if(!check_validity) {
+		    		log("Duration must be non-negative double.");
+		    		return;
+		    	}
+		    	if(this.selectedColorButton == setRedPhaseButton) {
+	    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'r');
+		    		this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, Double.parseDouble(this.phaseDurationField.getText()));		    		
+	    			log("Color of Traffic Light is set to Red with duration of " + Double.parseDouble(this.phaseDurationField.getText()) + "s");
+	    		}
+	    		else if(this.selectedColorButton == setYellowPhaseButton) {
+	    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'y');
+		    		this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, Double.parseDouble(this.phaseDurationField.getText()));		    			    			
+	    			log("Color of Traffic Light is set to Yellow with duration of " + Double.parseDouble(this.phaseDurationField.getText()) + "s");
+	    		}
+	    		else if(this.selectedColorButton == setGreenPhaseButton) {
+	    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'G');
+		    		this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, Double.parseDouble(this.phaseDurationField.getText()));		    			    			
+	    			log("Color of Traffic Light is set to Green with duration of " + Double.parseDouble(this.phaseDurationField.getText()) + "s");
+	    		}
+	    	}
+    }
+    
+    private void toggleColorButton(Button button) {
+        if (selectedColorButton == button) {
+            // Deselect this button
+            button.getStyleClass().remove("selected-button");
+            selectedColorButton = null;
+        } else {
+            // Deselect previous button
+            if (selectedColorButton != null) {
+                selectedColorButton.getStyleClass().remove("selected-button");
+            }
+            // Select new
+            button.getStyleClass().add("selected-button");
+            selectedColorButton = button;
+        }
+    }
+
     
     @FXML private void zoomIn() {
     	this.mapInteractionHandler.handleZoomIn();
