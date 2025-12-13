@@ -166,6 +166,7 @@ public class MainController {
     @FXML private Pane vehiclePane;
     @FXML private Pane carLanePane;      // Pane chứa đường ô tô
     @FXML private Pane bikeLanePane;     // Pane chứa đường xe đạp
+    @FXML private Pane othervehiclePane;
     @FXML private ScrollPane bottomLogScrollPane;
  // --- THÊM DÒNG NÀY ---
     private MapManager mapManager; // Biến toàn cục để dùng ở mọi nơi
@@ -413,8 +414,7 @@ public class MainController {
             
          // 1. Gọi hàm vẽ phân loại (Render trực tiếp vào 2 Pane)
             this.renderer.renderLanes(
-                this.mapManager,                 // Dùng biến toàn cục này
-                this.simManager.getConnection(), 
+            	this.simManager.getMapManager().getLanes(),
                 this.carLanePane,                // Pane chứa đường ô tô
                 this.bikeLanePane,               // Pane chứa đường xe đạp
                 this.mixedLanePane,
@@ -422,7 +422,7 @@ public class MainController {
             );
 	         
             this.renderer.renderJunctions(
-            		this.simManager.getConnection(), 
+            		this.simManager.getMapManager().getJunctions(), 
             		this.junctionPane,  // Truyền Pane vào cho Renderer tự vẽ
             		juncId -> log("Selected Junction: " + juncId)
             		);

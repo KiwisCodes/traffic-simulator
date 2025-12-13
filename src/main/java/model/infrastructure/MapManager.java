@@ -145,16 +145,16 @@ public class MapManager {
     	}
     }
     
-    public Map<String, EdgeClass> getEdges() throws Exception{
+    public Map<String, EdgeClass> getEdges() {
     	//should store this in the attributes, dont need this each step
     	return new HashMap<>(this.edges);
 	}
     
-    public Map<String, LaneClass> getLanes() throws Exception{
+    public Map<String, LaneClass> getLanes() {
     	return new HashMap<>(this.lanes);
     }
     
-    public Map<String, JunctionClass> getJunctions() throws Exception{
+    public Map<String, JunctionClass> getJunctions() {
     	return new HashMap<>(this.junctions);
     }
     

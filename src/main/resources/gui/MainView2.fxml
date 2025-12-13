@@ -42,7 +42,7 @@
                           <Pane fx:id="trafficLightPane" pickOnBounds="false" />
                        </children>
                     </Group>
-                    <Pane fx:id="busPane" pickOnBounds="false" />
+                    <Pane fx:id="othervehiclePane" pickOnBounds="false" />
                     <Pane fx:id="carPane" pickOnBounds="false" />
                     <Pane fx:id="bikePane" pickOnBounds="false" />
                 </children>
