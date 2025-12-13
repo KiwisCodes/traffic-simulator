@@ -32,7 +32,7 @@ public class LaneClass {
 
     // --- Getters ---
     public String getId() { return id; }
-    public SumoGeometry getGeometry() { return geometry; }
+    public SumoGeometry getShape() { return geometry; }
     public String getParentEdge() { return parentEdgeId; }
     public double getWidth() { return width; } 
     public boolean isPassengerAllowed() { return allowsPassenger; }

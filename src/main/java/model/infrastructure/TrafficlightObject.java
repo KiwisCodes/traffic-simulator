@@ -56,4 +56,9 @@ public class TrafficlightObject{
 		SumoPosition2D result = this.link_pos;
 		return result;
 	}
+	
+	public SumoLink get_link_id() {
+		SumoLink result = this.link;
+		return result;
+	}
 }

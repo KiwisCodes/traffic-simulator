@@ -99,15 +99,6 @@ public class MapManager {
     }
 
 
-//    public void setEdgeIds(List<String> edges) { this.edgeIdList = edges; }
-//    public void setBounds(double minX, double minY, double maxX, double maxY) {
-//        this.minX = minX;
-//        this.minY = minY;
-//        this.maxX = maxX;
-//        this.maxY = maxY;
-//    }
-
-
     public List<String> getEdgeIdList() { 
     	return new ArrayList<> (edgeIdList); 
     }
