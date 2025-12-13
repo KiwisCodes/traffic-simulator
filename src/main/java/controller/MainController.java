@@ -147,6 +147,7 @@ public class MainController {
     @FXML private Pane vehiclePane;
     @FXML private Pane carLanePane;      // Pane chứa đường ô tô
     @FXML private Pane bikeLanePane;     // Pane chứa đường xe đạp
+    @FXML private Pane othervehiclePane;
     @FXML private ScrollPane bottomLogScrollPane;
  // --- THÊM DÒNG NÀY ---
     private MapManager mapManager; // Biến toàn cục để dùng ở mọi nơi

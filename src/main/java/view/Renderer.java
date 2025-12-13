@@ -132,12 +132,12 @@ public class Renderer {
                     // (Trong SUMO, ô tô con là "passenger". Nếu list rỗng nghĩa là cho phép tất cả -> cũng là có ô tô)
                     boolean allowCar = allowedClasses.contains("passenger") || allowedClasses.isEmpty();
                     
-                 // 3. [QUAN TRỌNG] CƠ CHẾ DỰ PHÒNG (Fallback)
-                    // Nếu một con đường lạ (bus, taxi, truck, delivery) không lọt vào danh sách trên,
-                    // ta mặc định ném nó vào pane Ô tô để nó HIỆN LÊN thay vì biến mất.
-                    if (!allowBike && !allowCar) {
-                        allowCar = true; 
-                    }
+//                 // 3. [QUAN TRỌNG] CƠ CHẾ DỰ PHÒNG (Fallback)
+//                    // Nếu một con đường lạ (bus, taxi, truck, delivery) không lọt vào danh sách trên,
+//                    // ta mặc định ném nó vào pane Ô tô để nó HIỆN LÊN thay vì biến mất.
+//                    if (!allowBike && !allowCar) {
+//                        allowCar = true; 
+//                    }
                     Shape laneShape = createLaneShape(laneId, connection, onLaneClick);
                     if (laneShape != null) {
                         // CASE 1: Đường Hỗn Hợp (Cả 2 cùng đi được)
@@ -148,8 +148,18 @@ public class Renderer {
                         else if (allowBike) {
                             bikePane.getChildren().add(laneShape); // VÀO BIKE
                         }
-                        else {
+                        else if (allowCar) {
                             carPane.getChildren().add(laneShape); // VÀO CAR
+                        }
+                        //TRƯỜNG HỢP D: Các cái đường khác
+                        else {
+                          
+                            // [QUAN TRỌNG NHẤT] Tắt tương tác chuột
+                            laneShape.setMouseTransparent(true); 
+                            
+                            // Bỏ nó vào carPane (hoặc một pane nền nào đó)
+                            // Vì MouseTransparent = true nên dù carPane có bật thì cũng không click vào hình này được
+                            carPane.getChildren().add(laneShape);
                         }
                  
                      
