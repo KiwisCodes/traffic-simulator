@@ -24,6 +24,7 @@ public class TrafficlightManager {
 	private SumoTraciConnection sumoConnection;
 	private List<String> trafficlightIdList = new ArrayList<>();
 	private List<TrafficlightObject> trafficlightlinkList = new ArrayList<>();
+	private Map<String, SumoTLSProgram> program_map = new HashMap<>();
 //	private Map<String, Map<SumoLink, String>> index_map = new HashMap<>(); // map each traffic light (tls_id) to a map that maps the sumolink to the index of that connection
 //	private Map<TrafficlightObject, Map<String, String>> drawing_map = new HashMap<>(); // map each traffic light (SumoLink) to the 2 attributes, junction_id and index 
 	
@@ -48,6 +49,9 @@ public class TrafficlightManager {
 				int run_var = 0;
 				for(SumoLink j : linkIdList) {
 					TrafficlightObject tmp = new TrafficlightObject(j, i, Integer.toString(run_var));
+//					SumoTLSController controller = (SumoTLSController) sumoConnection.do_job_get(Trafficlight.getCompleteRedYellowGreenDefinition(i));
+//					SumoTLSProgram prog = controller.programs.get("0");
+//					program_map.put(i, prog);
 					String laneId = tmp.get_from_lane_index();
 
 		            if (laneId != null && !laneId.isEmpty()) {
@@ -77,6 +81,10 @@ public class TrafficlightManager {
 	
 	public List<TrafficlightObject> trafficlightlinkList(){
 		return new ArrayList<> (this.trafficlightlinkList);
+	}
+	
+	public Map<String, SumoTLSProgram> trafficlightProgramMap(){
+		return new HashMap<> (this.program_map);
 	}
 
 
@@ -152,18 +160,91 @@ public class TrafficlightManager {
 		return output;
 	}
 	
-	public void setCurrentLightState(TrafficlightObject connection, char new_state) {
-		String cur_state = this.getCurrentLightFullState(connection);
-		StringBuilder sb = new StringBuilder(cur_state);
-		sb.setCharAt(Integer.parseInt(connection.get_link_index()), new_state);
+	public double getTrafficLightNextSwitch(TrafficlightObject connection) {
+		double output = 0.0;
 		try {
-			this.sumoConnection.do_job_set(Trafficlight.setRedYellowGreenState(connection.get_host_junction_id(), sb.toString()));
+			Object result = this.sumoConnection.do_job_get(Trafficlight.getNextSwitch(connection.get_host_junction_id()));
+			output = (double) result;
 		}
 		catch (Exception e) {
-//            alertError("SUMO Set Current Light State Failed", e.getMessage());
+//            alertError("SUMO Get Current Light State Failed", e.getMessage());
         }
-		return;
+		return output;
 	}
+	
+	public void setCurrentLightState(TrafficlightObject connection, char new_state) {
+	    String cur_state = this.getCurrentLightFullState(connection);
+//	    StringBuilder sb = new StringBuilder(cur_state);
+//	    sb.setCharAt(Integer.parseInt(connection.get_link_index()), new_state);
+//	    String new_state_string = sb.toString();
+
+	    try {
+	        SumoTLSController controller = (SumoTLSController) this.sumoConnection.do_job_get(Trafficlight.getCompleteRedYellowGreenDefinition(connection.get_host_junction_id()));
+	        SumoTLSProgram prog = controller.programs.get("0");
+	        int colorIndex = -1;
+	        List<SumoTLSPhase> phases = prog.phases;
+	        for(int run_var = 0; run_var < phases.size(); run_var++) {
+	        		SumoTLSPhase curPhase = phases.get(run_var);
+	        		if(curPhase.phasedef.charAt(Integer.parseInt(connection.get_link_index())) == new_state){
+	        			colorIndex = run_var;
+	        			break;
+	        		}
+	        }
+	        if(colorIndex == -1) {
+	        		if(new_state == 'G') {
+	        			new_state = 'g';
+	        		}
+	        		else if(new_state == 'g') {
+	        			new_state = 'G';
+	        		}
+	        		for(int run_var = 0; run_var < phases.size(); run_var++) {
+		        		SumoTLSPhase curPhase = phases.get(run_var);
+		        		if(curPhase.phasedef.charAt(Integer.parseInt(connection.get_link_index())) == new_state){
+		        			colorIndex = run_var;
+		        			break;
+		        		}
+		        }
+	        }
+	        // Create new program starting from current phase
+	        SumoTLSProgram new_prog = new SumoTLSProgram("0", prog.type, 0);
+
+	        for (int run_var = colorIndex; run_var < phases.size(); run_var++) {
+	            SumoTLSPhase origPhase = phases.get(run_var);
+	            ArrayList<Integer> nextCopy = origPhase.next == null ? null : new ArrayList<>(origPhase.next);
+	            SumoTLSPhase newPhase = new SumoTLSPhase(
+	                    origPhase.duration,
+	                    origPhase.minDur,
+	                    origPhase.maxDur,
+	                    origPhase.phasedef,
+	                    nextCopy,
+	                    origPhase.name
+	            );
+	            new_prog.add(newPhase);
+	        }
+	        for (int run_var = 0; run_var < colorIndex; run_var++) {
+	            SumoTLSPhase origPhase = phases.get(run_var);
+	            ArrayList<Integer> nextCopy = origPhase.next == null ? null : new ArrayList<>(origPhase.next);
+	            SumoTLSPhase newPhase = new SumoTLSPhase(
+	                    origPhase.duration,
+	                    origPhase.minDur,
+	                    origPhase.maxDur,
+	                    origPhase.phasedef,
+	                    nextCopy,
+	                    origPhase.name
+	            );
+	            new_prog.add(newPhase);
+	            System.out.println(origPhase.duration);
+	        }
+
+	        this.sumoConnection.do_job_set(Trafficlight.setCompleteRedYellowGreenDefinition(connection.get_host_junction_id(), new_prog));
+	        this.sumoConnection.do_job_set(Trafficlight.setProgram(connection.get_host_junction_id(), "0")); // without this the program will not run recursively your program
+	        this.sumoConnection.do_job_set(Trafficlight.setPhase(connection.get_host_junction_id(), 0));
+
+	    } catch (Exception e) {
+	        // handle error
+	    }
+	}
+
 	
 	public void setCurrentPhaseDuration(TrafficlightObject connection, double newPhaseDuration) {
 		try {

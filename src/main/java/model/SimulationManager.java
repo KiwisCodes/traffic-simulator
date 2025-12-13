@@ -19,6 +19,7 @@ import de.tudresden.sumo.cmd.*;
 import de.tudresden.sumo.objects.SumoColor;
 import de.tudresden.sumo.objects.SumoStage;
 import de.tudresden.sumo.objects.SumoStringList;
+import model.vehicles.VehicleClass;
 // Import your vehicle classes
 import model.vehicles.VehicleManager;
 //import model.vehicles.Car;
@@ -37,19 +38,19 @@ public class SimulationManager {
     // --- Configuration ---
     // Adjust this path to match your system
 	///Users/duongquytrang/sumo/bin/sumo
-    private String sumoPath = "/Users/duongquytrang/sumo/bin/sumo";
+    private String sumoPath = "/Users/apple/sumo/bin/sumo";
     private String sumoConfigFileName = "frauasmap.sumocfg";
     private String sumoConfigFilePath;
     
     // Step length in seconds (0.001s is very granular/fast)
-//    private String stepLength = "0.05"; 
+    private String stepLength = "0.1"; 
 
     // --- TraCI Connection ---
     private SumoTraciConnection sumoConnection;
 
     // --- State Data (The "World") ---
     private	Map<String, EdgeClass> listOfEdges;
-	private	Map<String, Map<String, Object>> listOfVehicles;
+	private	Map<String, VehicleClass> listOfVehicles;
 	private List<String> listOfTrafficlightIds;
 	private	Map<String, Map<String, String>> listOfLanes;
 	private	Map<String, Map<String, String>> listOfJunctions;
@@ -213,18 +214,22 @@ public class SimulationManager {
             if (type.equals("ALL") || type.equals("VEHICLE")) {
                 System.out.println("   > Collecting Vehicle Data...");
                 List<VehicleInfo> vehicleList = new ArrayList<>();
-                Map<String, Map<String, Object>> rawData = vehicleManager.getVehiclesData();
-                for (Map.Entry<String, Map<String, Object>> entry : rawData.entrySet()) {
-                    String id = entry.getKey();
-                    Map<String, Object> attr = entry.getValue();
+                Map<String, VehicleClass> rawData = vehicleManager.getVehiclesData();
+                for (VehicleClass vehicle : rawData.values()) {
                     
-                    double speed = (Double) attr.get("Speed");
-                    String color = attr.get("Color").toString();
-                    double depart = (Double) attr.get("Depart");
+                    String id = vehicle.getId();
+                    double speed = vehicle.getSpeed();
+                    
+                    // SumoColor zu String konvertieren
+                    String color = vehicle.getColor().toString(); 
+                    
+                    double depart = vehicle.getDeparture();
                     double timeAlive = currentStepCount - depart;
 
+                    // Neues VehicleInfo Objekt erstellen
                     vehicleList.add(new VehicleInfo(id, speed, timeAlive, color, "car"));
                 }
+
 
                 String fileName = outputDir + "/vehicles_" + timestamp + ".csv";
                 this.reportManager.exportVehiclesCSV(vehicleList, fileName);
@@ -353,7 +358,7 @@ public class SimulationManager {
 		return listOfEdges;
 	};
 	
-	public Map<String, Map<String, Object>> getListOfVehicles() {
+	public Map<String, VehicleClass> getListOfVehicles() {
 		return listOfVehicles;
 	};
 	
@@ -384,13 +389,36 @@ public class SimulationManager {
     	return false;
     }
     
+    
+    
 
     public StatisticsManager getStatisticsManager() { return statisticsManager; }
     public ReportManager getReportManager() { return reportManager; }
+    public TrafficlightManager getTrafficlightManager() { return trafficlightManager; }
 //    public int getCurrentStep() { return currentStep; } // Volatile makes this safe
     public SumoTraciConnection getConnection() { return sumoConnection; }
     public MapManager getMapManager() { return mapManager; }
     public SimulationState getState() {
     	return this.simulationState;
+    }
+    
+    
+    //Khang's
+    public double getStepLength() {
+    	boolean check_validity = false;
+    	try {
+    		double val = Double.parseDouble(this.stepLength);
+        if(val >= 0) {
+        		check_validity = true;
+        }
+    } catch (NumberFormatException e) {
+    		check_validity = false;
+    }
+    	if(!check_validity) {
+    		return -1;
+    	}
+    	else {
+    		return Double.parseDouble(this.stepLength);
+    	}
     }
 }

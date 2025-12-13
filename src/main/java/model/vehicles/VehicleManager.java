@@ -1,101 +1,77 @@
 package model.vehicles;
 
-import de.tudresden.sumo.cmd.Vehicle;
-
+import de.tudresden.sumo.cmd.Vehicle; 
 import it.polito.appeal.traci.SumoTraciConnection;
 import de.tudresden.sumo.util.SumoCommand;
 import de.tudresden.sumo.objects.SumoStringList;
 import de.tudresden.sumo.objects.SumoColor;
+import de.tudresden.sumo.objects.SumoPosition2D; 
 import de.tudresden.sumo.config.Constants;
-import de.tudresden.sumo.util.SumoCommand; 
 
-import de.tudresden.sumo.cmd.Vehicle;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.io.IOException;
-
 
 public class VehicleManager {
 	
 	private SumoTraciConnection conn;
 	private List<String> vehiclesIds;
-	private Map<String, Map<String, Object>> vehiclesData;
+	private Map<String, VehicleClass> vehiclesData;
 	
 	public VehicleManager(SumoTraciConnection connection) {
 		this.conn = connection;
 		this.vehiclesData = new HashMap<>();
-		
+		this.vehiclesIds = new ArrayList<>();
 	}
-	
 	
 	public void step() {
 		try {
 			SumoCommand idListCmd = Vehicle.getIDList();
-			
 			Object response = this.conn.do_job_get(idListCmd);
 			
 			if (response instanceof SumoStringList) {
-				SumoStringList idList = (SumoStringList) response;
-				
-				this.vehiclesIds = idList;
-				
+				this.vehiclesIds = (SumoStringList) response;
 			}
+			
 			this.vehiclesData = new HashMap<>();
-			//chekc if there is still connection before updateVehicleInfo();
+			
 			if(this.conn == null || this.conn.isClosed()) {
 				return;
 			}
+			
 			this.updateVehiclesInfo();
+			
 		} catch (IllegalStateException e){
-			//hung added this exceptoin
 			System.out.println("VehicleManager: Connection closed. Stopping updates.");
 	        this.vehiclesIds = new ArrayList<>(); 
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
 	private void updateVehiclesInfo() {
-		
 		for (String id: this.vehiclesIds) {
 			
-			//check for connection while updating;
 			if(this.conn == null || this.conn.isClosed()) {
 				return;
 			}
 			
-			
-			Map<String, Object> vehicleAttributes = new HashMap<>();
-			
 			try {
 				SumoCommand colorCmd = Vehicle.getColor(id);
-				Object colorResponse = this.conn.do_job_get(colorCmd);
-				vehicleAttributes.put("Color", colorResponse);
-				
-				//Hung check
-//				SumoColor sumoColor = (SumoColor) colorResponse;
-//				System.out.println(sumoColor.r + " " + sumoColor.g + " " + sumoColor.b + " " + sumoColor.a);
+				SumoColor color = (SumoColor) this.conn.do_job_get(colorCmd);
 				
 				SumoCommand posCmd = Vehicle.getPosition(id);
-				Object posResponse = this.conn.do_job_get(posCmd);
-				vehicleAttributes.put("Position", posResponse);
+				SumoPosition2D position = (SumoPosition2D) this.conn.do_job_get(posCmd);
 				
 				SumoCommand speedCmd = Vehicle.getSpeed(id);
-				Object speedResponse = this.conn.do_job_get(speedCmd);
-				vehicleAttributes.put("Speed", speedResponse);
+				double speed = (Double) this.conn.do_job_get(speedCmd);
 				
 				SumoCommand edgeCmd = Vehicle.getRoadID(id);
-				Object edgeResponse = this.conn.do_job_get(edgeCmd);
-				vehicleAttributes.put("EdgeId", edgeResponse);
+				String edgeId = (String) this.conn.do_job_get(edgeCmd);
 				
-				//Hung added
 				SumoCommand angleCommand = Vehicle.getAngle(id);
-				Object angleResponse = this.conn.do_job_get(angleCommand);
-				vehicleAttributes.put("Angle", angleResponse);
+				double angle = (Double) this.conn.do_job_get(angleCommand);
 				
 				SumoCommand departureCmd = new SumoCommand(
 						Constants.CMD_GET_VEHICLE_VARIABLE,
@@ -104,10 +80,12 @@ public class VehicleManager {
 						Constants.RESPONSE_GET_VEHICLE_VARIABLE,
 						Constants.TYPE_DOUBLE
 				);
-				Object departureResponse = this.conn.do_job_get(departureCmd);
-				vehicleAttributes.put("Depart", departureResponse);
+				double departure = (Double) this.conn.do_job_get(departureCmd);
 				
-				this.vehiclesData.put(id, vehicleAttributes);
+				VehicleClass vehicle = new VehicleClass(id, color, position, speed, edgeId, angle, departure);
+				
+				this.vehiclesData.put(id, vehicle);
+				
 			} catch (Exception e) {
 				System.err.println("Error at Request from Vehicle " + id);
 				e.printStackTrace();
@@ -115,19 +93,18 @@ public class VehicleManager {
 		}
 	}
 	
-	public Map<String, Map<String, Object>> getVehiclesData() {
+	public Map<String, VehicleClass> getVehiclesData() {
 		return new HashMap<>(this.vehiclesData);
 	}
 	
 	public void injectVehicle(String vehicleId, String typeId, String routeId, SumoColor sumoColor, double Speed) {
 		try {
-			int depart = 0; // depart immediately
+			int depart = 0; 
 			double pos = 0.0;
 			byte lane = (byte) 0;
 			
 			SumoCommand addCmd = Vehicle.add(vehicleId, typeId, routeId, depart, pos, Speed, lane);
 			this.conn.do_job_set(addCmd);
-			System.out.println(sumoColor);
 			
 			SumoCommand setColorCmd = Vehicle.setColor(vehicleId, sumoColor);
 			this.conn.do_job_set(setColorCmd);
@@ -139,23 +116,16 @@ public class VehicleManager {
 		}
 	}
 	
-	
 	public int getVehicleCount() {
 		try {
+	
 			SumoCommand idCountCmd = Vehicle.getIDCount();
-			
-			Object response = this.conn.do_job_get(idCountCmd);
-			
-			int vehicleCount = (Integer) response;
-			
-			return vehicleCount;
-			
+			return (Integer) this.conn.do_job_get(idCountCmd);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return 0;
 		}
 	}
-	
 	
 	public void printVehiclesData() {
 		if (this.vehiclesData.isEmpty()) {
@@ -165,38 +135,22 @@ public class VehicleManager {
 		
 		System.out.println("----Actual Vehicles Data----");
 		
-		for (Map.Entry<String, Map<String, Object>> entry : this.vehiclesData.entrySet()) {
-			String carId = entry.getKey();
-			Map<String, Object> attributes = entry.getValue();
-			
-			System.out.println("ID " + carId);
-			
-			System.out.println(" - Color: " + attributes.get("Color"));
-			System.out.println(" - Position: " + attributes.get("Position"));
-			System.out.println(" - Speed: " + attributes.get("Speed"));
-			
+		for (VehicleClass v : this.vehiclesData.values()) {
+			System.out.println("ID " + v.getId());
+			System.out.println(" - Color: " + v.getColor());
+			System.out.println(" - Position: " + v.getPosition().x + ", " + v.getPosition().y);
+			System.out.println(" - Speed: " + v.getSpeed());
+			System.out.println(" - Edge: " + v.getEdgeId());
 			System.out.println("--------------------------");
 		}
 	}
 	
 	public void printIdList(int step) {
-		try {
-			SumoCommand idListCmd = Vehicle.getIDList();
-			
-			Object response = this.conn.do_job_get(idListCmd);
-			
-			if (response instanceof SumoStringList) {
-				SumoStringList idList = (SumoStringList) response;
-				
-				for (String id : idList) {
-					System.out.println(id);
-				}
-	            System.out.println("Step " + step + " Active Vehicles: " + idList.size());
+		if (this.vehiclesIds != null) {
+			for (String id : this.vehiclesIds) {
+				System.out.println(id);
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+            System.out.println("Step " + step + " Active Vehicles: " + this.vehiclesIds.size());
 		}
 	}
-	
-	
 }

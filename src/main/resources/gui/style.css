@@ -169,6 +169,21 @@
     -fx-text-fill: white;
     -fx-background-radius: 8;
 }
+
+
+/*Khang's added button */
+.warning-button {
+    -fx-background-color: #FFD700; /* bright yellow for yellow light */
+    -fx-text-fill: black;           /* black text for contrast */
+    -fx-background-radius: 8;
+}
+/*Khang's added button */
+.selected-button {
+    -fx-border-color: black;   
+    -fx-border-width: 2px;
+    -fx-border-radius: 4px;   
+}
+
 .success-button {
     -fx-background-color: #5BA860;
     -fx-text-fill: white;

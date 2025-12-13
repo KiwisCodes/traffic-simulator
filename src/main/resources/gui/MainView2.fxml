@@ -4,7 +4,6 @@
 <?import javafx.scene.Group?>
 <?import javafx.scene.control.Accordion?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ColorPicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.RadioButton?>
@@ -173,31 +172,35 @@
                                                       <Label text="Choose Vehicle Color" />
                                                       <ColorPicker fx:id="injectVehicleColorPickerButton" maxWidth="1.7976931348623157E308" />
                                                       <Label text="Choose Vehicle Speed" />
-                                                      <Slider fx:id="injectVehicleSpeedSlider" majorTickUnit="20.0" max="50.0" min="10.0" minorTickCount="5" showTickLabels="true" showTickMarks="true" />
+                                                      <Slider fx:id="injectVehicleSpeedSlider" majorTickUnit="5.0" max="15.0" min="5.0" minorTickCount="8" showTickLabels="true" showTickMarks="true" />
                                                   <Button fx:id="injectVehicleButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#injectVehicle" styleClass="action-button" text="INJECT VEHICLE" />
                                                </children>
                                             </VBox>
                                           </content>
                                         </TitledPane>
                                         
-                                        <TitledPane text="Traffic Lights">
+                                        <TitledPane fx:id="trafficLightControlPane" text="Traffic Lights">
                                           <content>
                                             <VBox spacing="10.0">
                                                <children>
-                                                  <Label text="Select Traffic Light on map" textFill="#666666" />
-                                                  <TextField fx:id="trafficLightIdField" editable="false" promptText="TL ID" />
+                                               	 <Label style="-fx-font-size: 11px;" text="Select Traffic Light ID on map" textFill="#666666" />
+                                               	 <TextField fx:id="trafficLightIdField" editable="false" promptText="TL ID" styleClass="read-only-field" />
+                                                  <Label text="Set Color and/or Duration for the Traffic Light" textFill="#666666" />
                                                   <HBox alignment="TOP_CENTER" spacing="5.0">
                                                      <Button fx:id="setRedPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" styleClass="danger-button" text="Red" HBox.hgrow="ALWAYS" />
                                                          <Region prefHeight="26.0" prefWidth="0.0" />
-                                                         <Button fx:id="setRedPhaseButton1" maxWidth="1.7976931348623157E308" minWidth="80.0" mnemonicParsing="false" styleClass="danger-button" text="Yellow" />
+                                                         <Button fx:id="setYellowPhaseButton" maxWidth="1.7976931348623157E308" minWidth="80.0" mnemonicParsing="false" styleClass="warning-button" text="Yellow" />
                                                          <Region prefHeight="26.0" prefWidth="0.0" />
                                                      <Button fx:id="setGreenPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" prefHeight="26.0" prefWidth="52.0" styleClass="success-button" text="Green" HBox.hgrow="ALWAYS" />
                                                   </HBox>
                                                   <HBox spacing="5.0">
                                                       <TextField fx:id="phaseDurationField" promptText="Duration (s)" HBox.hgrow="ALWAYS" />
-                                                      <Button fx:id="setPhaseDurationButton" styleClass="small-button" text="Set" />
+                                                      <!--<Button fx:id="setPhaseDurationButton" styleClass="small-button" text="Set" />-->
                                                   </HBox>
-                                                  <CheckBox fx:id="adaptiveTrafficCheck" text="Adaptive Mode" />
+                                                  <Button fx:id="setTrafficLightColorandorDurationButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#setTrafficLightColorandorDuration" styleClass="action-button" text="SET COLOR AND/OR DURATION" />
+                                                  <!--<CheckBox fx:id="adaptiveTrafficCheck" text="Adaptive Mode" />*/-->
+                                                  <Label text="Switch Traffic Light onto the next Phase" textFill="#666666" />
+                                                  <Button fx:id="switchTrafficLightPhaseButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#switchTrafficLightPhase" styleClass="action-button" text="SWITCH TO THE NEXT PHASE" />
                                                </children>
                                             </VBox>
                                           </content>
@@ -245,25 +248,13 @@
                                                             <TextField fx:id="secondEdgeField1" editable="false" promptText="Second Edge ID" styleClass="read-only-field" />
                                                          </children>
                                                       </VBox>
-                                                      <HBox spacing="5.0">
-                                                         <children>
-                                                            <TextField fx:id="vehicleSpeedField1" promptText="Speed (m/s)" HBox.hgrow="ALWAYS" />
-                                                            <Button fx:id="setVehicleSpeedButton1" styleClass="small-button" text="Set" />
-                                                         </children>
-                                                      </HBox>
-                                                      <HBox spacing="5.0">
-                                                         <children>
-                                                            <TextField fx:id="vehicleColorField1" promptText="Color (R,G,B)" HBox.hgrow="ALWAYS" />
-                                                            <Button fx:id="setVehicleColorButton1" styleClass="small-button" text="Set" />
-                                                         </children>
-                                                      </HBox>
-                                                      <HBox spacing="5.0">
-                                                         <children>
-                                                            <TextField fx:id="vehicleCountField" promptText="Number of vehicles" HBox.hgrow="ALWAYS" />
-                                                            <Button fx:id="setNumberOfVehiclesButton" styleClass="small-button" text="Set" />
-                                                         </children>
-                                                      </HBox>
-                                                      <Button fx:id="stressTestButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#runStressTest" styleClass="action-button" text="Stress Test" />
+                                                      <Label text="Choose Vehicle Color" />
+                                                      <ColorPicker fx:id="injectVehicleColorPickerButton1" maxWidth="1.7976931348623157E308" />
+                                                      <Label text="Choose Vehicle Speed" />
+                                                      <Slider fx:id="injectVehicleSpeedSlider1" majorTickUnit="5.0" max="15.0" min="5.0" minorTickCount="6" showTickLabels="true" showTickMarks="true" />
+                                                      <Label layoutX="21.0" layoutY="230.0" text="Choose number of vehicles:" />
+                                                      <Slider fx:id="numberOfVehicleSlider1" blockIncrement="0.0" layoutX="21.0" layoutY="257.0" majorTickUnit="20.0" max="50.0" min="5.0" minorTickCount="9" showTickLabels="true" showTickMarks="true" snapToTicks="true" />
+                                                      <Button fx:id="stressTestButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#runStressTestOnSpecificEdges" styleClass="action-button" text="INJECT VEHICLE" />
                                                    </children>
                                                 </VBox>
                                              </content>
