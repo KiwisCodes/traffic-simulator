@@ -26,6 +26,7 @@ import de.tudresden.sumo.objects.SumoGeometry;   // Chứa danh sách tọa đ�
 import de.tudresden.sumo.objects.SumoPosition2D; // Tọa độ X, Y lẻ
 import model.infrastructure.MapManager;
 import model.infrastructure.TrafficlightObject;
+import model.vehicles.VehicleClass;
 import util.ColorConverter;
 // --- Project Classes (Các class của nhóm bạn) ---
 import util.CoordinateConverter;
@@ -67,24 +68,22 @@ public class Renderer {
         HOVER_GLOW.setRadius(10);
         HOVER_GLOW.setSpread(0.6);
         
-        //Khang's
-        this.tl_color_map.put('r', Color.RED);                         // red
-		this.tl_color_map.put('R', Color.rgb(255, 80, 80));            // bright_red
+    	//Khang's
+  		this.tl_color_map.put('r', Color.rgb(255, 80, 80));            // bright_red
 
-		this.tl_color_map.put('y', Color.YELLOW);                      // yellow
-		this.tl_color_map.put('Y', Color.rgb(255, 255, 120));          // bright_yellow
+  		this.tl_color_map.put('y', Color.rgb(255, 255, 120));          // yellow
 
-		this.tl_color_map.put('g', Color.GREEN);                       // green
-		this.tl_color_map.put('G', Color.rgb(120, 255, 120));          // bright_green
+  		this.tl_color_map.put('g', Color.GREEN);                       // green
+  		this.tl_color_map.put('G', Color.rgb(120, 255, 120));          // bright_green
 
-		// JavaFX has no blinking colors. You must implement blinking using transitions.
-		// Here: normal + brighter versions.
-		this.tl_color_map.put('o', Color.rgb(255, 200, 0));            // blinking_yellow (base)
-		this.tl_color_map.put('O', Color.rgb(255, 230, 50));           // bright_blinking_yellow (base)
+  		// JavaFX has no blinking colors. You must implement blinking using transitions.
+  		// Here: normal + brighter versions.
+  		this.tl_color_map.put('o', Color.rgb(255, 200, 0));            // blinking_yellow (base)
+  		this.tl_color_map.put('O', Color.rgb(255, 230, 50));           // bright_blinking_yellow (base)
 
-		this.tl_color_map.put('a', Color.rgb(139, 0, 0));              // dark_red (≈ Firebrick / DarkRed)
-		this.tl_color_map.put('b', Color.rgb(184, 134, 11));           // dark_yellow (≈ DarkGoldenRod)
-		this.tl_color_map.put('c', Color.rgb(0, 100, 0));              // dark_green (≈ DarkGreen)
+  		this.tl_color_map.put('a', Color.rgb(139, 0, 0));              // dark_red (≈ Firebrick / DarkRed)
+  		this.tl_color_map.put('b', Color.rgb(184, 134, 11));           // dark_yellow (≈ DarkGoldenRod)
+  		this.tl_color_map.put('c', Color.rgb(0, 100, 0));              // dark_green (≈ DarkGreen)
     }
 
  // Trong Renderer.java
@@ -123,7 +122,10 @@ public class Renderer {
                 	Object response = connection.do_job_get(Lane.getAllowed(laneId));
                     @SuppressWarnings("unchecked")
 					List<String> allowedClasses = (List<String>) response;
-                    
+//                    for(String allow:allowedClasses) {
+//                    	System.out.print(allow + " ");
+//                    }
+//                    System.out.println("");
                     
                     // 1. Có được phép đi Xe đạp không?
                  
@@ -397,166 +399,290 @@ public class Renderer {
     //Khai báo biến cache (dùng để lưu dữ liệu xe)
   	// Key: ID xe (String), Value: Hình vẽ chiếc xe đó (Polygon)
     private Map<String, Polygon> vehicleVisualCache = new HashMap<>();
-	public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> vehicleData) {
-		//Dòng lệnh này xóa sạch mọi thứ trong Pane mỗi khi hàm được gọi (60 lần/giây) -> Quá tốn cache, máy chạy nặng, 
-//		// Xoá sạch xe trên 
-//	    vehiclePane.getChildren().clear();
-		
-		// CASE 1: Dữ liệu rỗng -> Xóa sạch mọi thứ
-        if (vehicleData == null || vehicleData.isEmpty()) {
-            vehiclePane.getChildren().clear(); // xoá mọi thứ trên Pane 
-            vehicleVisualCache.clear(); // xoá cả  
-            return;
-        }
-        
-     // CASE 2: CÓ DỮ LIỆU -> THỰC HIỆN ĐỒNG BỘ CACHE
-
-        // --- A. XÓA XE ĐÃ BIẾN MẤT (GARBAGE COLLECTION) ---
-        // Tìm những ID đang nằm trong Cache nhưng KHÔNG còn trong dữ liệu mới gửi về 
-        List<String> toRemove = new ArrayList<>();
-        for (String cachedId : vehicleVisualCache.keySet()) {
-            if (!vehicleData.containsKey(cachedId)) { // nếu dữ liệu vehicleData gửi về không còn xe đó nữa thì xe đó cần phảị bị xoá 
-                toRemove.add(cachedId);
-            }
-        }
-        
-     // Xóa thực sự
-        for (String id : toRemove) {
-            Polygon shape = vehicleVisualCache.get(id); // tạo biến shape này vì hàm remove của getChildren trong javafx nó cần 1 hình chứ không phải string
-            // Do lúc đầu ghi khai báo biến vehicleVisualCache á, nó có cả phần string (là id) và phần polygon (phần polygon ở đây nó như kiểu một cái khung chứa tất cả những đặc điểm của xe.
-            // Lý do chúng ta dùng Polygon thay vì Object là vì nếu dùng Object thì nó sẽ như 1 cái khung vô danh trong javafx, chúng ta cần phải tự tạo function, tự làm nó có ích.
-            // Còn với Polygon thì đây là một cái khung của javafx, nó tự có các hàm như là setTranslateX, setFill,...
-            // Khi mà hàm get(id) hoạt động, nó sẽ lấy id và trả về một cái Polygon cho mình, mình lưu cái đó vào biến tên shape.
-            vehiclePane.getChildren().remove(shape); // Gỡ cái xe có id đó khỏi giao diện. Ở đây phải dùng shape làolygonj bởi vì hàm remove nó cần mình đưa nó một Node (hình vẽ) chứ không phải 1 id. Polygon trong javafx là 1  
-            vehicleVisualCache.remove(id);           // Xóa khỏi bộ nhớ đệm
-        }
-     // --- B. CẬP NHẬT HOẶC TẠO MỚI (UPDATE / CREATE) ---
-        for (String vehicleId : vehicleData.keySet()) {
-            Map<String, Object> props = vehicleData.get(vehicleId);
-         // (Để tí nữa lấy cả cục props ra thì vẫn biết ID nó là gì)
-            props.put("vehicleId", vehicleId); // Bình thường thì ID không có trong probs nhưng mà vì tí nữa chúng ta sẽ cần setUserData nên là chúng ta sẽ gắn nó vào thủ công để tí cần 
-            // Trong vehicleData , ID xe đang nằm ở bên ngoài, làm chìa khóa để mở ngăn tủ.
-            // Trong props (Hồ sơ bên trong): Chỉ chứa Position, Color, Speed. Nó KHÔNG chứa ID bên trong.
-            // Bạn dự định lưu props vào chiếc xe hình tam giác (carShape) để sau này click vào thì lấy ra xem.
-            //Nếu bạn không thực hiện dòng code props.put("vehicleId", vehicleId), thì khi lấy hồ sơ ra, bạn sẽ không biết chiếc xe này tên là gì, vì cái nhãn tên nó nằm ở tận vòng lặp for bên ngoài và đã bị mất dấu.
-            try {
-            	// 1. LẤY DỮ LIỆU TỌA ĐỘ
-	            double simX = 0;
-	            double simY = 0;
-	            double angle = 0;
-	            Color carColor = Color.YELLOW;
-	            // Lấy Tọa độ
-	            // Ở đây chúng ta đã cẩn thận kiểm tra xem chắc chắc là trong cái props này có cái key Position không và cái Position đó chứa dữ liệu gì?
-	            if (props.containsKey("Position")) {
-	                Object posObj = props.get("Position"); // lấy cái dữ liệu từ cái Position đó 
-	                if (posObj instanceof SumoPosition2D) { // nếu cái posObj này là dạng SumoPosition2
-	                    SumoPosition2D pos = (SumoPosition2D) posObj; // ta ép kiểu posObj thành SumoPosition2
-	                    simX = pos.x; // gán simX là pos.x
-	                    simY = pos.y; // gán simX là pos.y
-	                }
-	//                System.out.println(simX + " " + simY);
-	//                Thread.sleep(1000);
-	            }
-	         // Chuyển đổi sang tọa độ màn hình để tí dùng. Toạ độ simX và simY không dùng được vì nó là toạ độ của SUMO, không khớp vs 
-                double screenX = converter.toScreenX(simX);
-                double screenY = converter.toScreenY(simY);
-
-	          //kiểm tra cái kiểu của Angle và ép kiểu i như làm ở 
-	            if (props.containsKey("Angle")) {
-	                Object angleObj = props.get("Angle");
-	                if (angleObj instanceof Number) {
-	                    angle = ((Number) angleObj).doubleValue();
-	                }
-	            }
-	            
-	            if (props.containsKey("Color")) {
-	                Object colorObj = props.get("Color");
-	                
-	                if (colorObj instanceof SumoColor) {
-	                    // DÙNG HELPER ĐỂ CHUYỂN ĐỔI NGƯỢC LẠI
-//	                	System.out.println(colorObj);
-	                    carColor = ColorConverter.toFXColor((SumoColor) colorObj);
-//	                    System.out.println(carColor);
-	                }
-	            }
-	            
-
-                // 2. KIỂM TRA TRONG CACHE
-                Polygon carShape = vehicleVisualCache.get(vehicleId);
-
-                if (carShape != null) {
-                    // --- XE CŨ (ĐÃ CÓ) -> CHỈ CẬP NHẬT VỊ TRÍ ---
-                    carShape.setTranslateX(screenX); //"Dịch chuyển" (Translate) toàn bộ hình vẽ đến một vị trí mới.
-                    carShape.setTranslateY(screenY); //"Dịch chuyển" (Translate) toàn bộ hình vẽ đến một vị trí mới.
-                    carShape.setRotate(angle); //Xoay hình vẽ quanh tâm của nó.
-                    //Dữ liệu angle này lấy từ SUMO (thường SUMO tính góc 0 là hướng Bắc, quay chiều kim đồng hồ). JavaFX cũng xoay theo chiều kim đồng hồ, nên thường là tương thích tốt.
-                    
-                    // Cập nhật lại thông tin (để click vào ra info mới nhất)
-                    carShape.setUserData(props); 
-                    
-                    // (Tùy chọn) Cập nhật màu nếu cần thiết
-                    // updateVehicleColor(carShape, vehicleId);
-
-                } else {
-                    // --- XE MỚI (CHƯA CÓ) -> TẠO MỚI ---
-                    carShape = new Polygon();
-                    
-                    // Vẽ hình tam giác
-                  //Trong JavaFX, khi bạn tạo một Polygon (Đa giác), bạn cần cung cấp các cặp tọa độ (x, y) nối tiếp nhau. Tọa độ này tính từ tâm của chiếc xe (điểm 0,0).
-                    double size = 2.0; // Kích thước xe (như code cũ của bạn)
-                    carShape.getPoints().addAll(new Double[]{
-    	            //.getPoints(): Lấy ra danh sách chứa các điểm tạo nên đa giác này (lúc đầu danh sách này rỗng).
-    	            //Mảng new Double[]{...} của bạn chứa 6 số, tương ứng với 3 điểm (mỗi điểm gồm x và y):
-    	                0.0, -size,    //y = -size: Nằm phía trên tâm (Trong JavaFX, trục Y hướng xuống dưới, nên số âm là đi lên).  
-    	                -size/2, size,   //x = -size/2: Lệch sang trái một nửa kích thước., y = size: Nằm phía dưới tâm.
-    	                size/2, size    //x = size/2: Lệch sang phải một nửa kích thước. y = size: Nằm phía dưới tâm.
-    	            });
-
-                    // Set vị trí ban đầu
-                    carShape.setTranslateX(screenX);
-                    carShape.setTranslateY(screenY);
-                    carShape.setRotate(angle);
-                    
-                    
-
-                    carShape.setFill(carColor);
-                    carShape.setStrokeWidth(1);
-                    
-                    // Lưu info
-                    carShape.setUserData(props);
-
-                    // --- SỰ KIỆN CHUỘT (CHỈ CẦN GÁN 1 LẦN DUY NHẤT) ---
-                    // Bạn không cần gán lại mỗi frame như cách cũ -> Tối ưu hơn nhiều
-                    Polygon finalShape = carShape; // mình phải tạo biến này thay vì dùng biến carShape ban đầu là vì biến carShape ban đầu nó là cái biến sẽ có sự thay đổi rất nhiều qua mỗi vòng for hoặc cập nhật.
-              // Vấn đề nằm ở quy tắc của Java Lambda Expression (cái dấu ->).
-                    //Bất kỳ biến nào nằm bên ngoài mà muốn chui vào trong Lambda (...) -> { ... } để sử dụng thì biến đó phải là FINAL (Bất di bất dịch, không được phép thay đổi giá trị sau khi khởi tạo)
-                    // Lúc này finalShape được coi là "Effectively Final" (Chắc chắn không đổi), và Java cho phép mang nó vào trong sự kiện Click để dùng.
-                    carShape.setOnMouseClicked(e -> {
-                        Map<String, Object> info = (Map<String, Object>) finalShape.getUserData();
-                        System.out.println("Clicked Vehicle: " + info.get("vehicleId"));
-                    });
-                    
-                    carShape.setOnMouseEntered(e -> {
-                        finalShape.setEffect(HOVER_GLOW);
-                        finalShape.setCursor(Cursor.HAND); //biến con trỏ chuột thành hình Bàn Tay
-                    });
-                    
-                    carShape.setOnMouseExited(e -> {
-                        finalShape.setEffect(null);
-                        finalShape.setCursor(Cursor.DEFAULT);
-                    });
-
-                    // Add vào Pane và lưu vào Cache
-                    vehiclePane.getChildren().add(carShape);
-                    vehicleVisualCache.put(vehicleId, carShape);
-                }
-
-            } catch (Exception e) {
-                System.err.println("Error rendering vehicle: " + vehicleId);
-                continue;
-            }
-        }
-    }
+//	public void renderVehicles(Pane vehiclePane, Map<String, Map<String, Object>> vehicleData) {
+//		//Dòng lệnh này xóa sạch mọi thứ trong Pane mỗi khi hàm được gọi (60 lần/giây) -> Quá tốn cache, máy chạy nặng, 
+////		// Xoá sạch xe trên 
+////	    vehiclePane.getChildren().clear();
+//		
+//		// CASE 1: Dữ liệu rỗng -> Xóa sạch mọi thứ
+//        if (vehicleData == null || vehicleData.isEmpty()) {
+//            vehiclePane.getChildren().clear(); // xoá mọi thứ trên Pane 
+//            vehicleVisualCache.clear(); // xoá cả  
+//            return;
+//        }
+//        
+//     // CASE 2: CÓ DỮ LIỆU -> THỰC HIỆN ĐỒNG BỘ CACHE
+//
+//        // --- A. XÓA XE ĐÃ BIẾN MẤT (GARBAGE COLLECTION) ---
+//        // Tìm những ID đang nằm trong Cache nhưng KHÔNG còn trong dữ liệu mới gửi về 
+//        List<String> toRemove = new ArrayList<>();
+//        for (String cachedId : vehicleVisualCache.keySet()) {
+//            if (!vehicleData.containsKey(cachedId)) { // nếu dữ liệu vehicleData gửi về không còn xe đó nữa thì xe đó cần phảị bị xoá 
+//                toRemove.add(cachedId);
+//            }
+//        }
+//        
+//     // Xóa thực sự
+//        for (String id : toRemove) {
+//            Polygon shape = vehicleVisualCache.get(id); // tạo biến shape này vì hàm remove của getChildren trong javafx nó cần 1 hình chứ không phải string
+//            // Do lúc đầu ghi khai báo biến vehicleVisualCache á, nó có cả phần string (là id) và phần polygon (phần polygon ở đây nó như kiểu một cái khung chứa tất cả những đặc điểm của xe.
+//            // Lý do chúng ta dùng Polygon thay vì Object là vì nếu dùng Object thì nó sẽ như 1 cái khung vô danh trong javafx, chúng ta cần phải tự tạo function, tự làm nó có ích.
+//            // Còn với Polygon thì đây là một cái khung của javafx, nó tự có các hàm như là setTranslateX, setFill,...
+//            // Khi mà hàm get(id) hoạt động, nó sẽ lấy id và trả về một cái Polygon cho mình, mình lưu cái đó vào biến tên shape.
+//            vehiclePane.getChildren().remove(shape); // Gỡ cái xe có id đó khỏi giao diện. Ở đây phải dùng shape làolygonj bởi vì hàm remove nó cần mình đưa nó một Node (hình vẽ) chứ không phải 1 id. Polygon trong javafx là 1  
+//            vehicleVisualCache.remove(id);           // Xóa khỏi bộ nhớ đệm
+//        }
+//     // --- B. CẬP NHẬT HOẶC TẠO MỚI (UPDATE / CREATE) ---
+//        for (String vehicleId : vehicleData.keySet()) {
+//            Map<String, Object> props = vehicleData.get(vehicleId);
+//         // (Để tí nữa lấy cả cục props ra thì vẫn biết ID nó là gì)
+//            props.put("vehicleId", vehicleId); // Bình thường thì ID không có trong probs nhưng mà vì tí nữa chúng ta sẽ cần setUserData nên là chúng ta sẽ gắn nó vào thủ công để tí cần 
+//            // Trong vehicleData , ID xe đang nằm ở bên ngoài, làm chìa khóa để mở ngăn tủ.
+//            // Trong props (Hồ sơ bên trong): Chỉ chứa Position, Color, Speed. Nó KHÔNG chứa ID bên trong.
+//            // Bạn dự định lưu props vào chiếc xe hình tam giác (carShape) để sau này click vào thì lấy ra xem.
+//            //Nếu bạn không thực hiện dòng code props.put("vehicleId", vehicleId), thì khi lấy hồ sơ ra, bạn sẽ không biết chiếc xe này tên là gì, vì cái nhãn tên nó nằm ở tận vòng lặp for bên ngoài và đã bị mất dấu.
+//            try {
+//            	// 1. LẤY DỮ LIỆU TỌA ĐỘ
+//	            double simX = 0;
+//	            double simY = 0;
+//	            double angle = 0;
+//	            Color carColor = Color.YELLOW;
+//	            // Lấy Tọa độ
+//	            // Ở đây chúng ta đã cẩn thận kiểm tra xem chắc chắc là trong cái props này có cái key Position không và cái Position đó chứa dữ liệu gì?
+//	            if (props.containsKey("Position")) {
+//	                Object posObj = props.get("Position"); // lấy cái dữ liệu từ cái Position đó 
+//	                if (posObj instanceof SumoPosition2D) { // nếu cái posObj này là dạng SumoPosition2
+//	                    SumoPosition2D pos = (SumoPosition2D) posObj; // ta ép kiểu posObj thành SumoPosition2
+//	                    simX = pos.x; // gán simX là pos.x
+//	                    simY = pos.y; // gán simX là pos.y
+//	                }
+//	//                System.out.println(simX + " " + simY);
+//	//                Thread.sleep(1000);
+//	            }
+//	         // Chuyển đổi sang tọa độ màn hình để tí dùng. Toạ độ simX và simY không dùng được vì nó là toạ độ của SUMO, không khớp vs 
+//                double screenX = converter.toScreenX(simX);
+//                double screenY = converter.toScreenY(simY);
+//
+//	          //kiểm tra cái kiểu của Angle và ép kiểu i như làm ở 
+//	            if (props.containsKey("Angle")) {
+//	                Object angleObj = props.get("Angle");
+//	                if (angleObj instanceof Number) {
+//	                    angle = ((Number) angleObj).doubleValue();
+//	                }
+//	            }
+//	            
+//	            if (props.containsKey("Color")) {
+//	                Object colorObj = props.get("Color");
+//	                
+//	                if (colorObj instanceof SumoColor) {
+//	                    // DÙNG HELPER ĐỂ CHUYỂN ĐỔI NGƯỢC LẠI
+////	                	System.out.println(colorObj);
+//	                    carColor = ColorConverter.toFXColor((SumoColor) colorObj);
+////	                    System.out.println(carColor);
+//	                }
+//	            }
+//	            
+//
+//                // 2. KIỂM TRA TRONG CACHE
+//                Polygon carShape = vehicleVisualCache.get(vehicleId);
+//
+//                if (carShape != null) {
+//                    // --- XE CŨ (ĐÃ CÓ) -> CHỈ CẬP NHẬT VỊ TRÍ ---
+//                    carShape.setTranslateX(screenX); //"Dịch chuyển" (Translate) toàn bộ hình vẽ đến một vị trí mới.
+//                    carShape.setTranslateY(screenY); //"Dịch chuyển" (Translate) toàn bộ hình vẽ đến một vị trí mới.
+//                    carShape.setRotate(angle); //Xoay hình vẽ quanh tâm của nó.
+//                    //Dữ liệu angle này lấy từ SUMO (thường SUMO tính góc 0 là hướng Bắc, quay chiều kim đồng hồ). JavaFX cũng xoay theo chiều kim đồng hồ, nên thường là tương thích tốt.
+//                    
+//                    // Cập nhật lại thông tin (để click vào ra info mới nhất)
+//                    carShape.setUserData(props); 
+//                    
+//                    // (Tùy chọn) Cập nhật màu nếu cần thiết
+//                    // updateVehicleColor(carShape, vehicleId);
+//
+//                } else {
+//                    // --- XE MỚI (CHƯA CÓ) -> TẠO MỚI ---
+//                    carShape = new Polygon();
+//                    
+//                    // Vẽ hình tam giác
+//                  //Trong JavaFX, khi bạn tạo một Polygon (Đa giác), bạn cần cung cấp các cặp tọa độ (x, y) nối tiếp nhau. Tọa độ này tính từ tâm của chiếc xe (điểm 0,0).
+//                    double size = 2.0; // Kích thước xe (như code cũ của bạn)
+//                    carShape.getPoints().addAll(new Double[]{
+//    	            //.getPoints(): Lấy ra danh sách chứa các điểm tạo nên đa giác này (lúc đầu danh sách này rỗng).
+//    	            //Mảng new Double[]{...} của bạn chứa 6 số, tương ứng với 3 điểm (mỗi điểm gồm x và y):
+//    	                0.0, -size,    //y = -size: Nằm phía trên tâm (Trong JavaFX, trục Y hướng xuống dưới, nên số âm là đi lên).  
+//    	                -size/2, size,   //x = -size/2: Lệch sang trái một nửa kích thước., y = size: Nằm phía dưới tâm.
+//    	                size/2, size    //x = size/2: Lệch sang phải một nửa kích thước. y = size: Nằm phía dưới tâm.
+//    	            });
+//
+//                    // Set vị trí ban đầu
+//                    carShape.setTranslateX(screenX);
+//                    carShape.setTranslateY(screenY);
+//                    carShape.setRotate(angle);
+//                    
+//                    
+//
+//                    carShape.setFill(carColor);
+//                    carShape.setStrokeWidth(1);
+//                    
+//                    // Lưu info
+//                    carShape.setUserData(props);
+//
+//                    // --- SỰ KIỆN CHUỘT (CHỈ CẦN GÁN 1 LẦN DUY NHẤT) ---
+//                    // Bạn không cần gán lại mỗi frame như cách cũ -> Tối ưu hơn nhiều
+//                    Polygon finalShape = carShape; // mình phải tạo biến này thay vì dùng biến carShape ban đầu là vì biến carShape ban đầu nó là cái biến sẽ có sự thay đổi rất nhiều qua mỗi vòng for hoặc cập nhật.
+//              // Vấn đề nằm ở quy tắc của Java Lambda Expression (cái dấu ->).
+//                    //Bất kỳ biến nào nằm bên ngoài mà muốn chui vào trong Lambda (...) -> { ... } để sử dụng thì biến đó phải là FINAL (Bất di bất dịch, không được phép thay đổi giá trị sau khi khởi tạo)
+//                    // Lúc này finalShape được coi là "Effectively Final" (Chắc chắn không đổi), và Java cho phép mang nó vào trong sự kiện Click để dùng.
+//                    carShape.setOnMouseClicked(e -> {
+//                        Map<String, Object> info = (Map<String, Object>) finalShape.getUserData();
+//                        System.out.println("Clicked Vehicle: " + info.get("vehicleId"));
+//                    });
+//                    
+//                    carShape.setOnMouseEntered(e -> {
+//                        finalShape.setEffect(HOVER_GLOW);
+//                        finalShape.setCursor(Cursor.HAND); //biến con trỏ chuột thành hình Bàn Tay
+//                    });
+//                    
+//                    carShape.setOnMouseExited(e -> {
+//                        finalShape.setEffect(null);
+//                        finalShape.setCursor(Cursor.DEFAULT);
+//                    });
+//
+//                    // Add vào Pane và lưu vào Cache
+//                    vehiclePane.getChildren().add(carShape);
+//                    vehicleVisualCache.put(vehicleId, carShape);
+//                }
+//
+//            } catch (Exception e) {
+//                System.err.println("Error rendering vehicle: " + vehicleId);
+//                continue;
+//            }
+//        }
+//    }
+//public void renderVehicles(Pane vehiclePane, Map<String, VehicleClass> vehicleData) {
+//        
+//        // CASE 1: Dữ liệu rỗng -> Xóa sạch mọi thứ
+//        if (vehicleData == null || vehicleData.isEmpty()) {
+//            vehiclePane.getChildren().clear(); 
+//            vehicleVisualCache.clear(); 
+//            return;
+//        }
+//        
+//        // CASE 2: CÓ DỮ LIỆU -> THỰC HIỆN ĐỒNG BỘ CACHE
+//
+//        // --- A. XÓA XE ĐÃ BIẾN MẤT (GARBAGE COLLECTION) ---
+//        List<String> toRemove = new ArrayList<>();
+//        for (String cachedId : vehicleVisualCache.keySet()) {
+//            // Kiểm tra xem ID trong cache còn tồn tại trong dữ liệu mới (vehicleData) hay không
+//            if (!vehicleData.containsKey(cachedId)) { 
+//                toRemove.add(cachedId);
+//            }
+//        }
+//        
+//        // Xóa thực sự
+//        for (String id : toRemove) {
+//            Polygon shape = vehicleVisualCache.get(id); 
+//            vehiclePane.getChildren().remove(shape); 
+//            vehicleVisualCache.remove(id);           
+//        }
+//
+//        // --- B. CẬP NHẬT HOẶC TẠO MỚI (UPDATE / CREATE) ---
+//        // Thay vì iter keySet, ta iter trực tiếp qua các đối tượng SimulationVehicle
+//        for (VehicleClass vehicle : vehicleData.values()) {
+//            
+//            String vehicleId = vehicle.getId(); // Lấy ID trực tiếp từ object
+//
+//            try {
+//                // 1. LẤY DỮ LIỆU (KHÔNG CẦN ÉP KIỂU NHƯ CŨ NỮA)
+//                // Nhờ class SimulationVehicle, ta lấy dữ liệu an toàn và nhanh hơn
+//                SumoPosition2D pos = vehicle.getPosition();
+//                double simX = pos.x;
+//                double simY = pos.y;
+//                
+//                // Chuyển đổi sang tọa độ màn hình
+//                double screenX = converter.toScreenX(simX);
+//                double screenY = converter.toScreenY(simY);
+//
+//                // Lấy góc và màu
+//                double angle = vehicle.getAngle();
+//                
+//                // Chuyển đổi màu SUMO sang JavaFX Color (Sử dụng Helper cũ của bạn)
+//                Color carColor = ColorConverter.toFXColor(vehicle.getColor());
+//
+//                // 2. KIỂM TRA TRONG CACHE
+//                Polygon carShape = vehicleVisualCache.get(vehicleId);
+//
+//                if (carShape != null) {
+//                    // --- XE CŨ (ĐÃ CÓ) -> CHỈ CẬP NHẬT VỊ TRÍ ---
+//                    carShape.setTranslateX(screenX);
+//                    carShape.setTranslateY(screenY);
+//                    carShape.setRotate(angle);
+//                    
+//                    // Cập nhật lại thông tin vào UserData (để click vào ra info mới nhất)
+//                    // Thay vì lưu Map, ta lưu thẳng object SimulationVehicle
+//                    carShape.setUserData(vehicle); 
+//                    
+//                    // (Tùy chọn) Nếu muốn xe đổi màu theo thời gian thực thì bỏ comment dòng dưới
+//                    // carShape.setFill(carColor);
+//
+//                } else {
+//                    // --- XE MỚI (CHƯA CÓ) -> TẠO MỚI ---
+//                    carShape = new Polygon();
+//                    
+//                    // Vẽ hình tam giác (logic giữ nguyên)
+//                    double size = 2.0; 
+//                    carShape.getPoints().addAll(new Double[]{
+//                        0.0, -size,      
+//                        -size/2, size,   
+//                        size/2, size    
+//                    });
+//
+//                    // Set vị trí ban đầu
+//                    carShape.setTranslateX(screenX);
+//                    carShape.setTranslateY(screenY);
+//                    carShape.setRotate(angle);
+//                    
+//                    carShape.setFill(carColor);
+//                    carShape.setStrokeWidth(1);
+//                    
+//                    // Lưu info object vào shape
+//                    carShape.setUserData(vehicle);
+//
+//                    // --- SỰ KIỆN CHUỘT ---
+//                    Polygon finalShape = carShape; 
+//                    
+//                    carShape.setOnMouseClicked(e -> {
+//                        // Lấy lại dữ liệu từ UserData. Bây giờ nó là SimulationVehicle chứ không phải Map
+//                        Object data = finalShape.getUserData();
+//                        if (data instanceof VehicleClass) {
+//                            VehicleClass clickedVehicle = (VehicleClass) data;
+//                            System.out.println("Clicked Vehicle: " + clickedVehicle.getId());
+//                            // Bạn có thể lấy thêm info: clickedVehicle.getSpeed(), etc.
+//                        }
+//                    });
+//                    
+//                    carShape.setOnMouseEntered(e -> {
+//                        finalShape.setEffect(HOVER_GLOW);
+//                        finalShape.setCursor(Cursor.HAND); 
+//                    });
+//                    
+//                    carShape.setOnMouseExited(e -> {
+//                        finalShape.setEffect(null);
+//                        finalShape.setCursor(Cursor.DEFAULT);
+//                    });
+//
+//                    // Add vào Pane và lưu vào Cache
+//                    vehiclePane.getChildren().add(carShape);
+//                    vehicleVisualCache.put(vehicleId, carShape);
+//                }
+//
+//            } catch (Exception e) {
+//                System.err.println("Error rendering vehicle: " + vehicleId);
+//                e.printStackTrace(); // In lỗi ra để dễ debug
+//                continue;
+//            }
+//        }
+//    }
 	
 	public void clearVehicleCache() {
         this.vehicleVisualCache.clear();
@@ -709,102 +835,91 @@ public class Renderer {
 	    
 //		}
 	//Khang
-	public void renderTrafficLights(Pane trafficLightPane, Map<TrafficlightObject,Character>trafficLightsData) {
-		
-		trafficLightPane.getChildren().clear();
-	
-	    if (trafficLightsData == null || trafficLightsData.isEmpty()) {
-	    		System.out.println("Empty traffic light map");
-	        return;
-	    }
-	
-	    for (TrafficlightObject tl_link : trafficLightsData.keySet()) {
-	    		Character tl_color_char = trafficLightsData.get(tl_link);
-	    		try {
-	    			SumoPosition2D tmp_pos = tl_link.get_position();
-	            double simX = tmp_pos.x;
-	            double simY = tmp_pos.y;
-	            double screenX = this.converter.toScreenX(simX);
-	            double screenY = this.converter.toScreenY(simY);
-	            Group lightGroup = new Group();
-	
-	            // Housing
-	            Rectangle box = new Rectangle(-0.75, -2.125, 1.5, 4.25); 
-	            box.setArcWidth(0.75);  
-	            box.setArcHeight(0.75);  
-	            box.setFill(Color.rgb(30, 30, 30)); // keep color
-	            box.setStroke(Color.BLACK);
-	
-	            // Lamps
-	            Character red_lamp = 'a';
-	            Character yellow_lamp = 'b';
-	            Character green_lamp = 'c';
-	            if(tl_color_char == 'R' || tl_color_char == 'r') {
-	                red_lamp = tl_color_char;
-	            }
-	            else if(tl_color_char == 'G' || tl_color_char == 'g') {
-	                green_lamp = tl_color_char;
-	            }
-	            else if(tl_color_char == 'Y' || tl_color_char == 'y') {
-	                yellow_lamp = tl_color_char;
-	            }
-	            else {
-	                yellow_lamp = tl_color_char; // 'o' or 'O'
-	            }
-	
-	            // Circles (lamps)
-	            Circle redLamp = new Circle(0, -1.125, 0.5, this.tl_color_map.get(red_lamp));
-	            Circle yellowLamp = new Circle(0, 0, 0.5, this.tl_color_map.get(yellow_lamp));
-	            Circle greenLamp = new Circle(0, 1.125, 0.5, this.tl_color_map.get(green_lamp));
-	
-	            redLamp.setId("red");
-	            yellowLamp.setId("yellow");
-	            greenLamp.setId("green");
-	
-	            lightGroup.getChildren().addAll(box, redLamp, yellowLamp, greenLamp);
-	
-	            lightGroup.setTranslateX(screenX);
-	            lightGroup.setTranslateY(screenY);
-	            lightGroup.setUserData(tl_color_char);
-	
-	
-	//            // --- BƯỚC 5: XỬ LÝ CLICK (Quan trọng!) ---
-	//            // Vì UserData giờ là Map, nên khi lấy ra phải ép kiểu về Map
-	//            carShape.setOnMouseClicked(e -> {
-	//                // Lấy lại gói hàng
-	//                Map<String, Object> clickedInfo = (Map<String, Object>) carShape.getUserData();
-	//                
-	//                // Lấy ID từ trong gói hàng ra
-	//                String clickedId = (String) clickedInfo.get("vehicleId");
-	//                
-	//                // In thử ra Console để kiểm chứng là đã lưu đủ thông tin
-	//                System.out.println("Bạn vừa click vào xe: " + clickedInfo); 
-	//                
-	//                // (Tạm thời) Vẫn gửi ID về Controller để điền vào ô Text
-	//                // Nếu sau này bạn muốn gửi cả cục data về Controller thì sửa Consumer sau
-	//                // Hiện tại MainController đang đợi String, nên mình gửi String
-	//                // Bạn cần truyền consumer vào hàm này nếu chưa có, hoặc xử lý tạm ở đây
-	//                System.out.println("Selected Vehicle ID: " + clickedId);
-	//            });
-	//            
-	//            // Hiệu ứng chuột
-	//            carShape.setOnMouseEntered(e -> {
-	//                carShape.setEffect(HOVER_GLOW);
-	//                carShape.setCursor(Cursor.HAND);
-	//            });
-	//            carShape.setOnMouseExited(e -> {
-	//                carShape.setEffect(null);
-	//                carShape.setCursor(Cursor.DEFAULT);
-	//            });
-	
-	            trafficLightPane.getChildren().add(lightGroup);
-//	            System.out.println("Added traffic light: " + tl_link.get_link_index());
-	
-	        } catch (Exception e) {
-	        	System.err.println("CRASHED while rendering traffic light: " + tl_link.get_link_index());
-	            e.printStackTrace(); 
-	            continue;
-	        }
-	    }
-	}
+		public void renderTrafficLights(Pane trafficLightPane, Map<TrafficlightObject,Character>trafficLightsData, Consumer<TrafficlightObject> onTrafficLightClick) {
+			
+			if (trafficLightsData == null || trafficLightsData.isEmpty()) {
+		        System.out.println("Empty traffic light map");
+		        return;
+		    }
+
+		    // Check if traffic lights already exist
+		    if (trafficLightPane.getChildren().isEmpty()) {
+		        // First time: create all traffic lights
+		        for (TrafficlightObject tl_link : trafficLightsData.keySet()) {
+		            Character tl_color_char = trafficLightsData.get(tl_link);
+		            try {
+		                SumoPosition2D pos = tl_link.get_position();
+		                double screenX = converter.toScreenX(pos.x);
+		                double screenY = converter.toScreenY(pos.y);
+
+		                Group lightGroup = new Group();
+		                // Housing
+		                Rectangle box = new Rectangle(-0.75, -2.125, 1.5, 4.25);
+		                box.setArcWidth(0.75);
+		                box.setArcHeight(0.75);
+		                box.setFill(Color.rgb(30, 30, 30));
+		                box.setStroke(Color.BLACK);
+
+		                // Circles
+		                Circle redLamp = new Circle(0, -1.125, 0.5);
+		                Circle yellowLamp = new Circle(0, 0, 0.5);
+		                Circle greenLamp = new Circle(0, 1.125, 0.5);
+
+		                redLamp.setId("red");
+		                yellowLamp.setId("yellow");
+		                greenLamp.setId("green");
+
+		                lightGroup.getChildren().addAll(box, redLamp, yellowLamp, greenLamp);
+		                lightGroup.setTranslateX(screenX);
+		                lightGroup.setTranslateY(screenY);
+		                lightGroup.setUserData(tl_link);
+
+		                // Click & Hover
+		                lightGroup.setOnMouseClicked(e -> {
+		                    if (onTrafficLightClick != null) {
+		                        onTrafficLightClick.accept(tl_link);
+		                    }
+		                });
+		                lightGroup.setOnMouseEntered(e -> {
+		                    lightGroup.setEffect(HOVER_GLOW);
+		                    lightGroup.setCursor(Cursor.HAND);
+		                });
+		                lightGroup.setOnMouseExited(e -> {
+		                    lightGroup.setEffect(null);
+		                    lightGroup.setCursor(Cursor.DEFAULT);
+		                });
+
+		                trafficLightPane.getChildren().add(lightGroup);
+
+		            } catch (Exception e) {
+		                e.printStackTrace();
+		            }
+		        }
+		    }
+
+		    // Update colors of all existing traffic lights
+		    for (var node : trafficLightPane.getChildren()) {
+		        if (!(node instanceof Group)) continue;
+		        Group lightGroup = (Group) node;
+		        TrafficlightObject tl_link = (TrafficlightObject) lightGroup.getUserData();
+		        Character tl_color_char = trafficLightsData.get(tl_link);
+		        if (tl_color_char == null) continue; // skip if no data
+
+		        for (var child : lightGroup.getChildren()) {
+		            if (!(child instanceof Circle)) continue;
+		            Circle lamp = (Circle) child;
+		            switch (lamp.getId()) {
+		                case "red" -> {
+		                    lamp.setFill((tl_color_char == 'r') ? tl_color_map.get(tl_color_char) : tl_color_map.get('a'));
+		                }
+		                case "yellow" -> {
+		                    lamp.setFill((tl_color_char == 'y' || tl_color_char == 'O' || tl_color_char == 'o') ? tl_color_map.get(tl_color_char) : tl_color_map.get('b'));
+		                }
+		                case "green" -> {
+		                    lamp.setFill((tl_color_char == 'G' || tl_color_char == 'g') ? tl_color_map.get(tl_color_char) : tl_color_map.get('c'));
+		                }
+		            }
+		        }
+		    }
+		}
 }

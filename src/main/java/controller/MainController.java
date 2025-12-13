@@ -1,6 +1,7 @@
 package controller;
 
 import javafx.animation.AnimationTimer;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.Group;
@@ -34,6 +35,8 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.stage.Stage;
+import javafx.util.Duration;
+
 import java.util.Map;
 
  //Model & View Imports
@@ -41,6 +44,9 @@ import model.SimulationManager;
 import model.StatisticsManager;
 
 import model.infrastructure.MapManager;
+import model.infrastructure.TrafficlightManager;
+import model.infrastructure.TrafficlightObject;
+import model.vehicles.VehicleClass;
 import model.vehicles.VehicleManager;
 import view.Renderer;
 import util.CoordinateConverter; // Ensure this is imported from your util/view package
@@ -100,13 +106,18 @@ public class MainController {
     @FXML private Slider injectVehicleSpeedSlider;
 
     // Traffic Light Actions
+    @FXML private TitledPane trafficLightControlPane;
     @FXML private TextField trafficLightIdField;
     @FXML private Button setRedPhaseButton;
+    @FXML private Button setYellowPhaseButton;
     @FXML private Button setGreenPhaseButton;
     @FXML private Button resumeAutoButton;
-    @FXML private Button setPhaseDurationButton;
+    @FXML private Button setTrafficLightColorandorDurationButton;
     @FXML private TextField phaseDurationField;
-    @FXML private CheckBox adaptiveTrafficCheck;
+    @FXML private Button switchTrafficLightPhaseButton;
+    private Button selectedColorButton = null; // keep track of which button is selected
+    private Consumer<TrafficlightObject> trafficLightClickHandler;
+    private TrafficlightObject currentTrafficLightLink;
 
     // Filtering
     @FXML private TextField filterColorField;
@@ -116,9 +127,17 @@ public class MainController {
     @FXML private Button clearFilterButton;
 
     // Stress Testing
-    @FXML private TextField stressEdgeField;
-    @FXML private TextField stressCountField;
+    @FXML private TitledPane stressTestPane;
     @FXML private Button stressTestButton;
+    @FXML private RadioButton carRadio1;           // Nút chọn Ô tô
+    @FXML private RadioButton bikeRadio1;          // Nút chọn Xe đạp
+    @FXML private ToggleGroup vehicleTypeGroup1;   // Nhóm nút chọn (để biết cái nào đang active)
+    @FXML private TextField firstEdgeField1;       // Ô chứa ID điểm xuất phát
+    @FXML private TextField secondEdgeField1;      // Ô chứa ID điểm đích
+    @FXML private ColorPicker injectVehicleColorPickerButton1; // <-- THÊM CÁI NÀY
+    @FXML private Slider injectVehicleSpeedSlider1;
+    @FXML private Slider numberOfVehicleSlider1;
+    
 
     // Sumo-GUI Integration
     @FXML private TextField pathToSumocfgFileField;
@@ -172,6 +191,7 @@ public class MainController {
 //    Logic & State
     private SimulationManager simManager;
     private StatisticsManager statsManager;
+    private TrafficlightManager trafficLightManager;
     private Renderer renderer; 
     private ChartWindow chartWindow;
     
@@ -193,8 +213,6 @@ public class MainController {
     private MapInteractionHandler mapInteractionHandler;
     private SimulationQueue uiQueue;	
     private SimulationQueue statQueue;
-
-//    private final double PADDING = 50.0;//we dont need this
     
     
     // --- Initialization ---
@@ -229,12 +247,31 @@ public class MainController {
                 }
             });
         }
+        
+        if (stressTestPane != null) {
+            stressTestPane.expandedProperty().addListener((obs, wasExpanded, isNowExpanded) -> {
+            	InteractWithVehicleStressTestDropMenu(); // Cập nhật ngay lập tức
+                
+                // (Tùy chọn) Reset các ô text khi đóng lại cho sạch
+                if (!isNowExpanded) {
+                    if (firstEdgeField1 != null) firstEdgeField1.clear();
+                    if (secondEdgeField1 != null) secondEdgeField1.clear();
+                }
+            });
+        }
+        
      // --- 2. Lắng nghe việc CHỌN LOẠI XE (Car/Bike) ---
         if (vehicleTypeGroup != null) {
             vehicleTypeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             	InteractWithVehicleInjectionDropMenu(); // Cập nhật ngay lập tức
             });
         }
+        if (vehicleTypeGroup1 != null) {
+            vehicleTypeGroup1.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            	InteractWithVehicleStressTestDropMenu(); // Cập nhật ngay lập tức
+            });
+        }
+        
         
         disableButtons(true);
         this.chartWindow = new ChartWindow();
@@ -291,6 +328,11 @@ public class MainController {
             });
         }
         
+      //khang's traffic light
+        setRedPhaseButton.setOnAction(e -> toggleColorButton(setRedPhaseButton));
+        setYellowPhaseButton.setOnAction(e -> toggleColorButton(setYellowPhaseButton));
+        setGreenPhaseButton.setOnAction(e -> toggleColorButton(setGreenPhaseButton));
+        
     }
 
     @FXML 
@@ -304,6 +346,7 @@ public class MainController {
             isSimulationRunning = true;
             disableButtons(false);
             MapManager mapManager = this.simManager.getMapManager();
+            this.trafficLightManager = this.simManager.getTrafficlightManager();
             this.renderer.setConverter(mapManager);
 
             Consumer<String> laneClickHandler = (laneId) -> {
@@ -328,11 +371,45 @@ public class MainController {
                         log("Selected Another First Edge  " + edgeId);
                     }
                     
-                } else {
+                } else if (stressTestPane != null && stressTestPane.isExpanded()) {
+                    // 2. Logic điền lần lượt: Điền ô 1 -> Điền ô 2 -> Reset quay lại ô 1
+                    if (firstEdgeField1.getText().isEmpty()) {
+                        firstEdgeField1.setText(edgeId);
+                        log("Selected First Edge: " + edgeId);
+                        
+                    } else if (secondEdgeField1.getText().isEmpty()) {
+                        secondEdgeField1.setText(edgeId);
+                        log("Selected Second Edge: " + edgeId);
+                        
+                    } else {
+                        // Nếu cả 2 ô đã có dữ liệu, click lần nữa sẽ reset ô 1 thành đường mới chọn
+                        firstEdgeField1.setText(edgeId);
+                        secondEdgeField1.clear();
+                        log("Selected Another First Edge  " + edgeId);
+                    }
+                    
+                }
+                else
+                {
                     // Nếu menu đang đóng thì chỉ in log xem chơi
                     log("Edge ID: " + edgeId); 
                 }
             };
+            
+            //Khang
+            trafficLightClickHandler = (trafficLightLink) -> {
+                // 1. Kiểm tra xem Menu thêm đèn có đang mở không?
+                if (trafficLightControlPane != null && trafficLightControlPane.isExpanded()) {
+                    	trafficLightIdField.setText(trafficLightLink.get_link_id().toString());
+                    	this.currentTrafficLightLink = trafficLightLink;
+                    log("Selected Traffic Light: " + trafficLightLink.get_link_id().toString());   
+                } else {
+                    // Nếu menu đang đóng thì chỉ in log xem chơi
+                    log("Traffic Light ID: " + trafficLightLink.get_link_id().toString()); 
+                }
+            };
+            
+            
             
          // 1. Gọi hàm vẽ phân loại (Render trực tiếp vào 2 Pane)
             this.renderer.renderLanes(
@@ -344,17 +421,19 @@ public class MainController {
                 laneClickHandler                 // Hàm xử lý click
             );
 	         
+            this.renderer.renderJunctions(
+            		this.simManager.getConnection(), 
+            		this.junctionPane,  // Truyền Pane vào cho Renderer tự vẽ
+            		juncId -> log("Selected Junction: " + juncId)
+            		);
             // 2. Cài đặt trạng thái tương tác ban đầu
             // (Đảm bảo lúc mới Start, menu đang đóng thì cả 2 đường đều sáng/click được)
+            
             InteractWithVehicleInjectionDropMenu();
+            InteractWithVehicleStressTestDropMenu();
 	         log("Static Map drawn (Separated Car/Bike lanes)");
             
 
-	         this.renderer.renderJunctions(
-	        	        this.simManager.getConnection(), 
-	        	        this.junctionPane,  // Truyền Pane vào cho Renderer tự vẽ
-	        	        juncId -> log("Selected Junction: " + juncId)
-	        	    );
             
 
 //	 		AtomicBoolean injected = new AtomicBoolean(false);
@@ -393,7 +472,6 @@ public class MainController {
                         this.uiQueue.offerState(simulationState);// by this we dont get interrupted, unlike putState
                         this.statQueue.offerState(simulationState);
                         currentStep++;
-//                        Thread.sleep(10);
                     } catch (InterruptedException e) {
                         // 1. This catches the "Stop" signal while sleeping
                         System.out.println("Simulation loop interrupted. Stopping safely.");
@@ -425,14 +503,11 @@ public class MainController {
             			continue;
                 	}
                 	try {
-                        // 1. TAKE from the queue (Blocking call - waits if empty)
                         SimulationState state = statQueue.takeState(); 
                         
                         if (state == null) continue;
-//                        Map<String, Map<String, Object>> statsData = convertStateToStatsFormat(state);
-                        Map<String, Map<String, Object>> statsData = state.getVehicles();
+                        Map<String, VehicleClass> statsData = state.getVehicles();
                         this.statsManager.step(statsData, currentStep);
-                        
                         double avgSpeed = this.statsManager.avgVehiclesSpeed();
                         Map<String, Integer> density = this.statsManager.calculateVehicleDensity();
                         Map<String, Integer> travelTimeDist = this.statsManager.calculateTravelTimeDistribution(60);
@@ -473,28 +548,12 @@ public class MainController {
 			if(simulationState == null) return;
 			
 			this.renderer.renderVehicles(vehiclePane, simulationState.getVehicles());
-			this.renderer.renderTrafficLights(trafficLightPane, simulationState.getTrafficLights());
+			this.renderer.renderTrafficLights(trafficLightPane, simulationState.getTrafficLights(), trafficLightClickHandler);
 			
 			int currentVehicleCount = simulationState.getVehicles().size();
 			updateCurrentStep();
 			updateCurrentVehicleCount(currentVehicleCount);
 			
-			//Khoi's
-//			Map<String, Map<String, Object>> statsData = convertStateToStatsFormat(simulationState);
-//			this.statsManager.step(statsData, currentStep);
-			
-//			System.out.println(statsData);
-			
-//			double avgSpeed = this.statsManager.avgVehiclesSpeed();
-//			Map<String, Integer> density = this.statsManager.calculateVehicleDensity();
-//			Map<String, Integer> travelTimeDist = this.statsManager.calculateTravelTimeDistribution(60);
-//			String threadName = Thread.currentThread().getName();		    
-//		    System.out.println(">>> [WRITE] Thread: " + threadName + " | Step: " + currentStep);
-//			System.out.println(avgSpeed);
-//			System.out.println(density);
-//			System.out.println(travelTimeDist);
-
-//			this.chartWindow.updateData(currentStep, avgSpeed, density, travelTimeDist);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			System.err.print(e.getMessage());
@@ -504,18 +563,9 @@ public class MainController {
 
     private void log(String message) {
         System.out.println(message);
-        
-        // Check if the label exists before attempting UI updates
         if (logLabel != null) {
-            
-            // Ensure all UI updates happen on the JavaFX Application Thread
             Platform.runLater(() -> {
-                
-                // 1. Append the new message to the existing log text
                 logLabel.setText(message + "\n" + logLabel.getText());
-                
-                // 2. Set the vertical scroll value to 1.0 (the bottom)
-                // We must check if the ScrollPane exists before setting the value
                 if (this.bottomLogScrollPane != null) {
                     this.bottomLogScrollPane.setVvalue(1.0);
                 }
@@ -567,15 +617,42 @@ public class MainController {
             if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false); // Bật Mixed
         }
     }
+    
+    private void InteractWithVehicleStressTestDropMenu() {
+        // TRƯỜNG HỢP 1: Nếu Menu "Vehicle Injection" đang ĐÓNG
+        // -> Cho phép tương tác với TẤT CẢ (để người dùng soi map)
+        if (stressTestPane == null || !stressTestPane.isExpanded()) {
+            if (carLanePane != null) carLanePane.setMouseTransparent(false);
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(false);
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false);
+            return;
+        }
+
+        // TRƯỜNG HỢP 2: Nếu Menu đang MỞ -> Kiểm tra loại xe
+        boolean isBikeMode = bikeRadio1.isSelected();
+
+        if (isBikeMode) {
+            // --- Đang chọn XE ĐẠP ---
+            // Đường Ô tô: Tắt tương tác (Không sáng)
+            if (carLanePane != null) carLanePane.setMouseTransparent(true); // tắt 
+            // Đường Xe đạp: Bật tương tác (Sáng)
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(false); // bật xe đạp
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false); // Bật Mixed
+            
+        } else {
+            // --- Đang chọn Ô TÔ ---
+            // Đường Ô tô: Bật tương tác (Sáng)
+            if (carLanePane != null) carLanePane.setMouseTransparent(false); //Bật car 
+            // Đường Xe đạp: Tắt tương tác (Không sáng)
+            if (bikeLanePane != null) bikeLanePane.setMouseTransparent(true); //tắt bike
+            if (mixedLanePane != null) mixedLanePane.setMouseTransparent(false); // Bật Mixed
+        }
+    }
 
 
     public void stopSimulation() {
         System.out.println("Stopping simulation...");
-        
-        // 1. Tell the loop logic to stop
         isSimulationRunning = false;
-        
-        // 2. Stop the UI update timer first (it's fast)
         if (uiLoop != null) {
             uiLoop.stop();
         }
@@ -584,7 +661,7 @@ public class MainController {
         	simManager.stopSimulation();
         }
         // Gọi hàm dọn dẹp cache
-        //Khi người dùng bấm nút Stop hoặc Reset mô phỏng, bạn bắt buộc phải xóa sạch Cache này đi. Nếu không, lần chạy sau ID car_1 cũ (đang nằm ở vị trí cũ) sẽ bị nhận nhầm là car_1 mới  Xe nhảy loạn xạ.
+        // Khi người dùng bấm nút Stop hoặc Reset mô phỏng, bạn bắt buộc phải xóa sạch Cache này đi. Nếu không, lần chạy sau ID car_1 cũ (đang nằm ở vị trí cũ) sẽ bị nhận nhầm là car_1 mới  Xe nhảy loạn xạ.
         if (renderer != null) {
             renderer.clearVehicleCache();
         }
@@ -685,10 +762,10 @@ public class MainController {
     	// --- XỬ LÝ MÀU SẮC ---
         // Lấy màu từ ColorPicker (JavaFX trả về 0.0 - 1.0)
         Color fxColor = injectVehicleColorPickerButton.getValue();
-        log(""+fxColor.getRed());
-        log("" + fxColor);
+//        log(""+fxColor.getRed());
+//        log("" + fxColor);
         SumoColor sumoColor = ColorConverter.toSumoColor(fxColor);
-        log(""+sumoColor);
+//        log(""+sumoColor);
     	if(this.simManager.InjectVehicle(vehicleType, sumoColor, speed, firstEdgeId, secondEdgeId)) {
     		log("Injected vehicle");    		
     	}
@@ -696,6 +773,122 @@ public class MainController {
     		log("Fail injecting vehicle");
     	}
     }
+    
+    @FXML private void switchTrafficLightPhase() {
+    	if(this.trafficLightIdField.getText().isEmpty() || this.currentTrafficLightLink == null) {
+    		log("Please choose a Traffic Light please");
+    		return;
+    	}
+    	this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, 0.0);
+    	log("Switched to the next Phase");
+		return;
+}
+
+    @FXML private void setTrafficLightColorandorDuration() {
+    	if(this.trafficLightIdField.getText().isEmpty() || this.currentTrafficLightLink == null) {
+    		log("Please choose a Traffic Light please");
+    		return;
+    	}
+    	if(this.phaseDurationField.getText().isEmpty() && this.selectedColorButton == null) {
+    		log("Please choose a color and/or duration to set");
+    		return;
+    	}
+    	else if(!this.phaseDurationField.getText().isEmpty() && this.selectedColorButton == null) {
+    		boolean check_validity = false;
+	    	try {
+	    		double val = Double.parseDouble(this.phaseDurationField.getText());
+	        if(val >= 0) {
+	        		check_validity = true;
+	        }
+	    } catch (NumberFormatException e) {
+	    		check_validity = false;
+	    }
+	    	if(!check_validity) {
+	    		log("Duration must be non-negative double.");
+	    		return;
+	    	}
+	    	else {
+	    		this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, Double.parseDouble(this.phaseDurationField.getText()));
+	    		log("Duration of this phase is set to " + Double.parseDouble(this.phaseDurationField.getText()) + "s.");
+	    	}
+    	}
+    	else if(this.phaseDurationField.getText().isEmpty() && this.selectedColorButton != null) {
+//    		double next_switch = this.trafficLightManager.getTrafficLightNextSwitch(this.currentTrafficLightLink);
+//    		double current_time = 0;
+//    		if(this.simManager.getStepLength() != -1) {
+//    			current_time = MainController.currentStep * this.simManager.getStepLength(); 
+//    		}
+//    		else {
+//    			log("Your step length is under wrong format");
+//    		}
+    		if(this.selectedColorButton == setRedPhaseButton) {
+    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'r');
+    			log("Color of Traffic Light is set to Red");
+    		}
+    		else if(this.selectedColorButton == setYellowPhaseButton) {
+    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'y');
+    			log("Color of Traffic Light is set to Yellow");
+    		}
+    		else if(this.selectedColorButton == setGreenPhaseButton) {
+    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'G');
+    			log("Color of Traffic Light is set to Green");
+    		}
+//    		if(next_switch > current_time) {
+//    			this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, next_switch - current_time);
+//    		}
+//    		else {
+//    			log("Your next switch is not after current time");
+//    		}
+    	}
+    	else {
+    		boolean check_validity = false;
+	    	try {
+	    		double val = Double.parseDouble(this.phaseDurationField.getText());
+	        if(val >= 0) {
+	        		check_validity = true;
+	        }
+	    } catch (NumberFormatException e) {
+	    		check_validity = false;
+	    }
+	    	if(!check_validity) {
+	    		log("Duration must be non-negative double.");
+	    		return;
+	    	}
+	    	if(this.selectedColorButton == setRedPhaseButton) {
+    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'r');
+	    		this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, Double.parseDouble(this.phaseDurationField.getText()));		    		
+    			log("Color of Traffic Light is set to Red with duration of " + Double.parseDouble(this.phaseDurationField.getText()) + "s");
+    		}
+    		else if(this.selectedColorButton == setYellowPhaseButton) {
+    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'y');
+	    		this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, Double.parseDouble(this.phaseDurationField.getText()));		    			    			
+    			log("Color of Traffic Light is set to Yellow with duration of " + Double.parseDouble(this.phaseDurationField.getText()) + "s");
+    		}
+    		else if(this.selectedColorButton == setGreenPhaseButton) {
+    			this.trafficLightManager.setCurrentLightState(this.currentTrafficLightLink, 'G');
+	    		this.trafficLightManager.setCurrentPhaseDuration(this.currentTrafficLightLink, Double.parseDouble(this.phaseDurationField.getText()));		    			    			
+    			log("Color of Traffic Light is set to Green with duration of " + Double.parseDouble(this.phaseDurationField.getText()) + "s");
+    		}
+    	}
+}
+
+	private void toggleColorButton(Button button) {
+	    if (selectedColorButton == button) {
+	        // Deselect this button
+	        button.getStyleClass().remove("selected-button");
+	        selectedColorButton = null;
+	    } else {
+	        // Deselect previous button
+	        if (selectedColorButton != null) {
+	            selectedColorButton.getStyleClass().remove("selected-button");
+	        }
+	        // Select new
+	        button.getStyleClass().add("selected-button");
+	        selectedColorButton = button;
+	    }
+}
+    
+    
     
     @FXML private void zoomIn() {
     	this.mapInteractionHandler.handleZoomIn();
@@ -722,103 +915,71 @@ public class MainController {
 		}
     }
     
-//    public class ChartWindow {
-//    	private final Stage stage;
-//    	
-//    	private XYChart.Series<Number, Number> speedSeries;
-//    	private LineChart<Number, Number> speedChart;
-//    	
-//    	private XYChart.Series<String, Number> densitySeries;
-//    	private BarChart<String, Number> densityChart;
-//    	
-//    	private XYChart.Series<String, Number> travelTimeSeries;
-//    	private BarChart<String, Number> travelTimeChart;
-//    	
-//    	public ChartWindow() {
-//    		this.stage = new Stage();
-//    		this.stage.setTitle("Live Simulation Statistics");
-//    		
-//    		initCharts();
-//    		
-//    		VBox layout = new VBox(10);
-//    		layout.getChildren().addAll(speedChart, densityChart, travelTimeChart);
-//    		
-//    		Scene scene = new Scene(layout, 600, 900);
-//    		stage.setScene(scene);
-//    	}
-//    	
-//    	private void initCharts() {
-//    		NumberAxis xAxisSpeed = new NumberAxis();
-//    		xAxisSpeed.setLabel("Step");
-//    		NumberAxis yAxisSpeed = new NumberAxis();
-//    		yAxisSpeed.setLabel("Avg Speed (m/s)");
-//    		
-//    		speedChart = new LineChart<>(xAxisSpeed, yAxisSpeed);
-//    		speedChart.setTitle("Average Network Speed");
-//    		speedChart.setAnimated(false);
-//    		
-//    		speedSeries = new XYChart.Series<>();
-//    		speedSeries.setName("Avg Speed");
-//    		speedChart.getData().add(speedSeries);
-//    		
-//    		CategoryAxis xAxisDens = new CategoryAxis();
-//    		xAxisDens.setLabel("Edge ID");
-//    		NumberAxis yAxisDens = new NumberAxis();
-//    		yAxisDens.setLabel("Count");
-//    		
-//    		densityChart = new BarChart<>(xAxisDens, yAxisDens);
-//    		densityChart.setTitle("Vehicle Density per Edge");
-//    		densityChart.setAnimated(false);
-//    		
-//    		densitySeries = new XYChart.Series<>();
-//    		densitySeries.setName("Vehicles");
-//    		densityChart.getData().add(densitySeries);
-//    		
-//    		CategoryAxis xAxisTime = new CategoryAxis();
-//    		xAxisTime.setLabel("Travel Time Range (s)");
-//    		NumberAxis yAxisTime = new NumberAxis();
-//    		yAxisTime.setLabel("Number of Vehicles");
-//    		
-//    		travelTimeChart = new BarChart<>(xAxisTime, yAxisTime);
-//    		travelTimeChart.setTitle("Travel Time Distribution");
-//    		travelTimeChart.setAnimated(false);
-//    		
-//    		travelTimeSeries = new XYChart.Series<>();
-//    		travelTimeSeries.setName("Frequency");
-//    		travelTimeChart.getData().add(travelTimeSeries);
-//    	}
-//    	
-//    	public void show() {
-//    		if (!stage.isShowing()) {
-//    			stage.show();
-//    		} else {
-//    			stage.toFront();
-//    		}
-//    	}
-//    	
-//    	public void updateData(int currentStep, double avgSpeed,
-//    			Map<String, Integer> densityMap, Map<String, Integer> travelTimeMap) {
-//    		Platform.runLater(() -> {
-//    			speedSeries.getData().add(new XYChart.Data<>(currentStep, avgSpeed));
-//    			densitySeries.getData().clear();
-//    			for (Map.Entry<String, Integer> entry: densityMap.entrySet()) {
-//    				densitySeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-//    			}
-//    			
-//    			travelTimeSeries.getData().clear();
-//    			for (Map.Entry<String, Integer> entry : travelTimeMap.entrySet()) {
-//    				travelTimeSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-//    			}
-//    		});
-//    	}
-//    }
-    
-//    private Map<String, Map<String, Object>> convertStateToStatsFormat(SimulationState state) {
-//    	Map<String, Map<String, Object>> vehiclesData = new HashMap<>();
-//    	vehiclesData = state.getVehicles();
-//    	return vehiclesData;
-//    }
-    
+    @FXML 
+    private void runStressTestOnSpecificEdges() {
+        if(this.firstEdgeField1.getText().isEmpty() || this.secondEdgeField1.getText().isEmpty()) {
+            log("Please choose 2 edges first.");
+            return;
+        }
+        
+        this.stressTestButton.setDisable(true);
+
+        PauseTransition unlockTimer = new PauseTransition(Duration.seconds(20));
+        unlockTimer.setOnFinished(e -> this.stressTestButton.setDisable(false));
+        unlockTimer.play();
+
+        final String firstEdgeId = this.firstEdgeField1.getText();
+        final String secondEdgeId = this.secondEdgeField1.getText();
+        
+        String type = "DEFAULT_VEHTYPE";
+        if (this.bikeRadio1.isSelected()) type = "DEFAULT_BIKETYPE"; // Or whatever ID you use
+        final String vehicleType = type;
+
+        double spd = 10;
+        if (this.injectVehicleSpeedSlider1 != null) {
+            spd = this.injectVehicleSpeedSlider1.getValue();
+        }
+        final double speed = spd;
+        
+        final int totalVehicles = (int) this.numberOfVehicleSlider1.getValue();
+
+        Color fxColor = injectVehicleColorPickerButton1.getValue();
+        SumoColor sumoColor = ColorConverter.toSumoColor(fxColor);
+
+        log("Starting Stress Test: Injecting " + totalVehicles + " vehicles...");
+
+        // 3. Run the Loop in a Background Thread
+        new Thread(() -> {
+            int successCount = 0;
+            
+            for (int i = 0; i < totalVehicles; i++) {
+                
+                // Try to inject
+                // Note: Ensure your InjectVehicle method is Thread-Safe or the SimManager handles connection locking
+                // Using the int r,g,b signature I gave you earlier:
+                boolean success = this.simManager.InjectVehicle(vehicleType, sumoColor, speed, firstEdgeId, secondEdgeId);
+                
+                if (success) {
+                    successCount++;
+                    // Update UI Log safely
+                    Platform.runLater(() -> log("Injected vehicle")); 
+                } else {
+                    Platform.runLater(() -> log("Injection failed (Road full?)"));
+                }
+
+                try { 
+                    Thread.sleep(200); 
+                } catch (InterruptedException e) { 
+                    break; 
+                }
+            }
+
+            // Final Report
+            final int finalCount = successCount;
+            Platform.runLater(() -> log("Stress Test Complete. Total Injected: " + finalCount));
+            
+        }).start();
+    }
     
     
 }

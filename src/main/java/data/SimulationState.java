@@ -2,7 +2,9 @@ package data;
 
 import java.util.concurrent.atomic.*;
 
+
 import model.infrastructure.*;
+import model.vehicles.VehicleClass;
 
 import java.util.*;
 
@@ -19,7 +21,7 @@ public class SimulationState {
 
 //	private final Map<String, EdgeClass> lastEdges;
 //	private final Map<String, LaneObject> lastLanes;
-    private final Map<String, Map<String, Object>> lastVehicles;//need to change this
+    private final Map<String, VehicleClass> lastVehicles;//need to change this
 //    private final List<String> laneIdList; //we use this to draw all the lanes;
     private final Map<TrafficlightObject, Character> lastTrafficLightIDs;
 //    private final List<String> lastTrafficLightIDs; commented all traffic light to test vehicle and edges/lanes
@@ -27,7 +29,7 @@ public class SimulationState {
 //    private final Map<String, Map<String, String>> lastJunctions;
     public SimulationState(
 //    		Map<String, EdgeClass> lastEdges,
-    		Map<String, Map<String, Object>> lastVehicles,
+    		Map<String, VehicleClass> lastVehicles,
     		Map<TrafficlightObject, Character> lastTrafficLightIDs
 //    		List<String> laneIdList
     		) 
@@ -38,6 +40,6 @@ public class SimulationState {
 //		this.laneIdList = laneIdList;
 	}
 //	public Map<String, EdgeClass> getEdges() { return lastEdges; }
-    public Map<String, Map<String, Object>> getVehicles() { return lastVehicles; }
+    public Map<String, VehicleClass> getVehicles() { return lastVehicles; }
     public Map<TrafficlightObject, Character> getTrafficLights() { return lastTrafficLightIDs;}
 }

@@ -1,33 +1,27 @@
 package model;
 
-import it.polito.appeal.traci.SumoTraciConnection;
-import de.tudresden.sumo.util.SumoCommand;
-import de.tudresden.sumo.objects.SumoStringList;
-import de.tudresden.sumo.objects.SumoColor;
+import model.vehicles.VehicleClass;
 
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.TreeMap;
 import java.util.Map;
-import java.io.IOException;
 
 public class StatisticsManager {
-	private Map<String, Map<String, Object>> vehiclesData;
+	
+	private Map<String, VehicleClass> vehiclesData;
 	private int step;
 	
 	public StatisticsManager() {
 		this.vehiclesData = new HashMap<>();
 	}
 	
-	public void step(Map<String, Map<String, Object>> vehiclesInfo, int step) {
+	public void step(Map<String, VehicleClass> vehiclesInfo, int step) {
 		this.vehiclesData = vehiclesInfo;
 		this.step = step;
-		return;
 	}
 	
-	// Calculate average speed of vehicles
 	public double avgVehiclesSpeed() {
 		if (this.vehiclesData.isEmpty()) {
 			System.err.println("There are no vehicles currently");
@@ -35,22 +29,19 @@ public class StatisticsManager {
 		}
 		
 		double totalSpeed = 0;
-		for (Map.Entry<String, Map<String, Object>> entry: this.vehiclesData.entrySet()) {
-			Map<String, Object> attributes = entry.getValue();
-			double speed = (double)attributes.get("Speed");
-			totalSpeed = totalSpeed + speed;
+		for (VehicleClass vehicle : this.vehiclesData.values()) {
+			totalSpeed += vehicle.getSpeed();
 		}
-		return totalSpeed / vehiclesData.size() ;
+		return totalSpeed / vehiclesData.size();
 	}
 	
 	
-	// Find out congestion spots
 	public List<String> findCongestionSpots() {
 		Map<String, List<Double>> edgeSpeeds = new HashMap<>();
 		
-		for(Map<String, Object> attributes: this.vehiclesData.values()) {
-			String edgeId = (String) attributes.get("EdgeId");
-			double speed = (double)attributes.get("Speed");
+		for(VehicleClass vehicle : this.vehiclesData.values()) {
+			String edgeId = vehicle.getEdgeId();
+			double speed = vehicle.getSpeed();
 			
 			edgeSpeeds.putIfAbsent(edgeId, new ArrayList<>());
 			edgeSpeeds.get(edgeId).add(speed);
@@ -80,9 +71,6 @@ public class StatisticsManager {
 	}
 	
 	
-	
-	
-	// Calculate the vehicle density per edge
 	public Map<String, Integer> calculateVehicleDensity() {
 		Map<String, Integer> densityMap = new HashMap<>();
 		
@@ -90,15 +78,14 @@ public class StatisticsManager {
 			return densityMap;
 		}
 		
-		for (Map<String, Object> attributes : this.vehiclesData.values()) {
-			String edgeId = (String) attributes.get("EdgeId");
+		for (VehicleClass vehicle : this.vehiclesData.values()) {
+			String edgeId = vehicle.getEdgeId();
 			
 			densityMap.put(edgeId, densityMap.getOrDefault(edgeId, 0) + 1);
 		}
 		
 		return densityMap;
 	}
-	
 	
 	
 	// Calculate travel time distribution
@@ -113,19 +100,18 @@ public class StatisticsManager {
 			return distribution;
 		}
 		
-		
-		for (Map.Entry<String, Map<String, Object>> entry : this.vehiclesData.entrySet()) {
-			Map<String, Object> attributes = entry.getValue();
-			double departureTime = (double)attributes.get("Depart");			
-			double currentTravelTime = this.step - departureTime;
-//			System.out.println("Vehicle" + entry.getKey() + " " + currentTravelTime);
+		for (VehicleClass vehicle : this.vehiclesData.values()) {
+			
+			double departureTime = vehicle.getDeparture();		
+			double currentTravelTime = this.step * 0.1 - departureTime;
+
+			
 			if (currentTravelTime < 0) {
 				continue;
 			}
 			int binIndex = (int) (currentTravelTime / binSizeSeconds);
 			int lowerBound = binIndex * binSizeSeconds;
 			int upperBound = (binIndex + 1) * binSizeSeconds;
-//			System.out.println("Current Travel Time: " + currentTravelTime);
 			
 			String key = lowerBound + "-" + upperBound;
 			distribution.put(key, distribution.getOrDefault(key, 0) + 1);
